@@ -1,14 +1,20 @@
 import React, { useState } from "react";
-import { ArrowLeft, ArrowRight, Mail, Lock, Eye, EyeOff } from "lucide-react";
-import { CommonProps } from "./types";
+import { ArrowRight, Mail, Lock, Eye, EyeOff } from "lucide-react";
 
-type CredentialsStepProps = CommonProps;
+type CredentialsStepProps = {
+	formData: { email: string; password: string; confirmPassword: string };
+	updateFormData: (
+		data: Partial<{
+			email: string;
+			password: string;
+			confirmPassword: string;
+		}>,
+	) => void;
+};
 
 const CredentialsStep: React.FC<CredentialsStepProps> = ({
 	formData,
 	updateFormData,
-	nextStep,
-	prevStep,
 }) => {
 	const [errors, setErrors] = useState<{
 		email?: string;
@@ -202,15 +208,7 @@ const CredentialsStep: React.FC<CredentialsStepProps> = ({
 				</div>
 			</div>
 
-			<div className="pt-4 flex justify-between">
-				<button
-					type="button"
-					onClick={prevStep}
-					className="flex items-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500"
-				>
-					<ArrowLeft className="mr-2 h-4 w-4" /> Back
-				</button>
-
+			<div className="pt-4 flex justify-end">
 				<button
 					type="button"
 					onClick={handleContinue}

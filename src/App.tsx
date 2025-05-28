@@ -4,14 +4,16 @@ import {
 	Route,
 	Navigate,
 	Outlet,
+	useLocation,
 } from "react-router-dom";
-import { AuthProvider, useAuth } from "./context/AuthContext";
+import { AuthProvider, useAuth, User } from "./context/AuthContext";
 
 // Layout
 import Layout from "./components/layout/Layout";
 
 // Pages
 import Home from "./pages/Home";
+import Onboarding from "./pages/Onboarding";
 import SearchResults from "./pages/SearchResults";
 import PropertyDetails from "./pages/PropertyDetails";
 import Search from "./pages/Search";
@@ -21,23 +23,57 @@ import UserProfile from "./pages/UserProfile";
 import Register from "./pages/Register";
 import Login from "./pages/Login";
 
-function ProtectedRoute() {
-	const { isAuthenticated, initializing } = useAuth();
+function Guard({
+	fn,
+}: {
+	fn: (user: User | null, path: string) => string | undefined;
+}) {
+	const location = useLocation();
+	const { user, initializing } = useAuth();
 	if (initializing) return "Loading";
-	if (!isAuthenticated) return <Navigate to="/login" />;
+	const check = fn(user, location.pathname);
+	if (typeof check === "string") return <Navigate to={check} />;
+	if (!user) return <Navigate to="/login" />;
+	if (!user.completedOnboarding && location.pathname !== "/onboarding")
+		return <Navigate to="/onboarding" />;
 	return <Outlet />;
 }
 
 function App() {
 	return (
-		<AuthProvider>
-			<Router>
+		<Router>
+			<AuthProvider>
 				<Layout>
 					<Routes>
 						<Route path="/" element={<Home />} />
-						<Route path="/register" element={<Register />} />
-						<Route path="/login" element={<Login />} />
-						<Route Component={() => <ProtectedRoute />}>
+						<Route
+							Component={() => (
+								<Guard
+									fn={(user) => (user ? "/" : undefined)}
+								/>
+							)}
+						>
+							<Route path="/register" element={<Register />} />
+							<Route path="/login" element={<Login />} />
+						</Route>
+						<Route
+							Component={() => (
+								<Guard
+									fn={(user, path) =>
+										user
+											? !user.completedOnboarding &&
+												path !== "/onboarding"
+												? "/onboarding"
+												: undefined
+											: "/login"
+									}
+								/>
+							)}
+						>
+							<Route
+								path="/onboarding"
+								element={<Onboarding />}
+							/>
 							<Route
 								path="/properties"
 								element={<SearchResults />}
@@ -61,8 +97,8 @@ function App() {
 						<Route path="*" element={<Navigate to="/" replace />} />
 					</Routes>
 				</Layout>
-			</Router>
-		</AuthProvider>
+			</AuthProvider>
+		</Router>
 	);
 }
 

@@ -1,33 +1,38 @@
 CREATE TABLE IF NOT EXISTS profiles (
 	id UUID REFERENCES auth.users NOT NULL PRIMARY KEY,
-	first_name TEXT,
-	last_name TEXT,
-	email TEXT,
-	phone TEXT,
-	user_type TEXT CHECK (user_type IN ('seeker', 'provider')) DEFAULT 'provider',
-	provider_type TEXT,
+	first_name TEXT NOT NULL,
+	last_name TEXT NOT NULL,
+	email TEXT NOT NULL,
+	phone TEXT NOT NULL,
+	user_type TEXT NOT NULL CHECK (user_type IN ('seeker', 'provider')) DEFAULT 'seeker',
+	provider_type TEXT NOT NULL DEFAULT '',
 	avatar_url TEXT,
 	completed_onboarding BOOL DEFAULT FALSE,
-	city TEXT,
-	country TEXT,
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()),
-	updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW())
+	city TEXT NOT NULL DEFAULT '',
+	country TEXT NOT NULL DEFAULT '',
+	created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT TIMEZONE('utc'::text, NOW()),
+	updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT TIMEZONE('utc'::text, NOW())
 );
 
 CREATE TABLE IF NOT EXISTS profile_settings (
 	id UUID REFERENCES auth.users NOT NULL PRIMARY KEY,
-	notifications_email BOOL DEFAULT TRUE,
-	notifications_sms BOOL DEFAULT FALSE,
-	notifications_app BOOL DEFAULT TRUE,
-	newsletter BOOL DEFAULT TRUE,
-	currency TEXT DEFAULT 'usd',
-	language TEXT DEFAULT 'English',
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()),
-	updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW())
+	notifications_email BOOL NOT NULL DEFAULT TRUE,
+	notifications_sms BOOL NOT NULL DEFAULT FALSE,
+	notifications_app BOOL NOT NULL DEFAULT TRUE,
+	newsletter BOOL NOT NULL DEFAULT TRUE,
+	currency TEXT NOT NULL DEFAULT 'usd',
+	language TEXT NOT NULL DEFAULT 'English',
+	created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT TIMEZONE('utc'::text, NOW()),
+	updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT TIMEZONE('utc'::text, NOW())
 );
 
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE profile_settings ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view their own profile" ON profiles;
+DROP POLICY IF EXISTS "Users can update their own profile" ON profiles;
+DROP POLICY IF EXISTS "Users can view their own settings" ON profile_settings;
+DROP POLICY IF EXISTS "Users can update their own settings" ON profile_settings;
 
 CREATE POLICY "Users can view their own profile" ON profiles FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "Users can update their own profile" ON profiles FOR UPDATE USING (auth.uid() = id);

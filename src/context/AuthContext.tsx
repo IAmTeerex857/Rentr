@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { Subscription } from "@supabase/supabase-js";
 import { supabase } from "../supabase/client";
+import { useLocation, useNavigate } from "react-router-dom";
 
 // Define user types
 export type UserType = "seeker" | "provider";
@@ -17,6 +18,7 @@ export interface User {
 	userType: UserType;
 	providerType: string;
 	avatarUrl: string | null;
+	completedOnboarding: boolean;
 	settings: {
 		notifications: {
 			email: boolean;
@@ -35,35 +37,6 @@ export type UserFormData = Omit<User, "id" | "avatarUrl"> & {
 	avatar: File | null;
 };
 
-// Map database profile to our User interface
-const mapProfileToUser = (profile: any): User => {
-	return {
-		id: profile.id,
-		firstName: profile.first_name,
-		lastName: profile.last_name,
-		email: profile.email,
-		phone: profile.phone || "",
-		city: profile.city,
-		country: profile.country,
-		userType: profile.user_type,
-		providerType: profile.provider_type,
-		avatarUrl: profile.avatar_url,
-		// We'll fetch these separately if needed
-		settings: {
-			notifications: {
-				email: true,
-				sms: false,
-				app: true,
-			},
-			preferences: {
-				currency: "USD",
-				language: "English",
-				newsletter: true,
-			},
-		},
-	};
-};
-
 // Define auth context interface
 interface AuthContextType {
 	user: User | null;
@@ -77,7 +50,7 @@ interface AuthContextType {
 	loginWithOauth: (type: "google" | "facebook") => Promise<void>;
 	logout: () => void;
 	register: (
-		userData: Omit<UserFormData, "settings">,
+		email: string,
 		password: string,
 	) => Promise<{ success: boolean; message: string }>;
 	updateUserProfile: (
@@ -96,6 +69,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
 	const [loading, setLoading] = useState<boolean>(false);
 	const [initializing, setInitializing] = useState<boolean>(true);
+	const location = useLocation();
+	const navigate = useNavigate();
 
 	const loadUserProfile = async (userId: string) => {
 		try {
@@ -116,8 +91,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
 			if (settingsError) throw settingsError;
 
-			setUser(mapProfileToUser({ ...profile, settings }));
+			setUser({
+				id: profile.id,
+				email: profile.email || "",
+				firstName: profile.first_name || "",
+				lastName: profile.last_name || "",
+				phone: profile.phone || "",
+				completedOnboarding: profile.completed_onboarding || false,
+				city: profile.city || "",
+				country: profile.country || "",
+				userType: (profile.user_type as UserType) || "seeker",
+				providerType: profile.provider_type || "",
+				avatarUrl: profile.avatar_url,
+				// We'll fetch these separately if needed
+				settings: {
+					notifications: {
+						email: settings.notifications_email || true,
+						sms: settings.notifications_sms || false,
+						app: settings.notifications_app || true,
+					},
+					preferences: {
+						currency: settings.currency || "usd",
+						language: settings.language || "English",
+						newsletter: settings.newsletter || true,
+					},
+				},
+			});
 			setIsAuthenticated(true);
+			if (
+				!profile.completed_onboarding &&
+				location.pathname !== "/register"
+			)
+				navigate("/onboarding");
 		} catch (profileError) {
 			console.error("Error loading user profile:", profileError);
 		}
@@ -129,8 +134,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		// Get the current session
 		const getInitialSession = async () => {
 			try {
-				setLoading(true);
-
 				const {
 					data: { session },
 				} = await supabase.auth.getSession();
@@ -138,8 +141,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				if (session) await loadUserProfile(session.user.id);
 			} catch (error) {
 				console.error("Error getting initial session:", error);
-			} finally {
-				setLoading(false);
 			}
 		};
 
@@ -155,7 +156,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 						session &&
 						(event === "SIGNED_IN" || event === "TOKEN_REFRESHED")
 					)
-						await loadUserProfile(session.user.id);
+						loadUserProfile(session.user.id);
 					else if (event === "SIGNED_OUT") {
 						setUser(null);
 						setIsAuthenticated(false);
@@ -218,7 +219,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
 	// Register function
 	const register = async (
-		userData: Omit<UserFormData, "settings">,
+		email: string,
 		password: string,
 	): Promise<{ success: boolean; message: string }> => {
 		try {
@@ -226,31 +227,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
 			// Create user in Supabase Auth
 			const { data, error } = await supabase.auth.signUp({
-				email: userData.email,
+				email,
 				password,
-				options: { data: userData },
 			});
 
 			if (error) throw error;
 
 			if (!data.user) throw new Error("failed to signup");
-
-			const { error: profileError } = await supabase
-				.from("profiles")
-				.upsert({
-					id: data.user.id,
-					first_name: userData.firstName,
-					last_name: userData.lastName,
-					email: userData.email,
-					phone: userData.phone,
-					city: userData.city,
-					country: userData.country,
-					user_type: userData.userType,
-					provider_type: userData.providerType,
-					avatar_url: await uploadAvatar(userData.avatar),
-				});
-
-			if (profileError) throw profileError;
 
 			setLoading(false);
 			return { success: true, message: "Registration successful" };
@@ -342,7 +325,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				}
 
 				const { error: settingsError } = await supabase
-					.from("user_settings")
+					.from("profile_settings")
 					.update(settingsData)
 					.eq("user_id", user.id);
 
