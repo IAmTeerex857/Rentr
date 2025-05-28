@@ -294,6 +294,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
 	const uploadAvatar = async (avatar: File | null) => {
 		if (!avatar) return null;
+		const bucket = "rentr";
+		const { data, error: uploadError } = await supabase.storage
+			.from(bucket)
+			.upload(`avatars/${Date.now()}-${avatar.name}`, avatar, {
+				cacheControl: "3600",
+				upsert: false,
+			});
+		if (uploadError) throw uploadError;
+		return supabase.storage.from(bucket).getPublicUrl(data.fullPath).data
+			.publicUrl;
 	};
 
 	// Update user profile
