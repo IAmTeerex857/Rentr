@@ -109,9 +109,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			if (profileError) throw profileError;
 
 			const { data: settings, error: settingsError } = await supabase
-				.from("user_settings")
+				.from("profile_settings")
 				.select("*")
-				.eq("user_id", userId)
+				.eq("id", userId)
 				.single();
 
 			if (settingsError) throw settingsError;
@@ -235,47 +235,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
 			if (!data.user) throw new Error("failed to signup");
 
-			const now = new Date().toISOString();
-
 			const { error: profileError } = await supabase
 				.from("profiles")
-				.insert([
-					{
-						id: data.user.id,
-						first_name: userData.firstName,
-						last_name: userData.lastName,
-						email: userData.email,
-						phone: userData.phone,
-						city: userData.city,
-						country: userData.country,
-						user_type: userData.userType,
-						provider_type: userData.providerType,
-						avatar_url: await uploadAvatar(userData.avatar),
-						created_at: now,
-						updated_at: now,
-					},
-				]);
+				.upsert({
+					id: data.user.id,
+					first_name: userData.firstName,
+					last_name: userData.lastName,
+					email: userData.email,
+					phone: userData.phone,
+					city: userData.city,
+					country: userData.country,
+					user_type: userData.userType,
+					provider_type: userData.providerType,
+					avatar_url: await uploadAvatar(userData.avatar),
+				});
 
 			if (profileError) throw profileError;
-
-			// Create user settings
-			const { error: settingsError } = await supabase
-				.from("user_settings")
-				.insert([
-					{
-						user_id: data.user.id,
-						notifications_email: true,
-						notifications_sms: false,
-						notifications_app: true,
-						currency: "USD",
-						language: "English",
-						newsletter: true,
-						created_at: now,
-						updated_at: now,
-					},
-				]);
-
-			if (settingsError) throw settingsError;
 
 			setLoading(false);
 			return { success: true, message: "Registration successful" };

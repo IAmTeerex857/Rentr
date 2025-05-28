@@ -9,7 +9,90 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      profile_settings: {
+        Row: {
+          created_at: string | null
+          currency: string | null
+          id: string
+          language: string | null
+          newsletter: boolean | null
+          notifications_app: boolean | null
+          notifications_email: boolean | null
+          notifications_sms: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          currency?: string | null
+          id: string
+          language?: string | null
+          newsletter?: boolean | null
+          notifications_app?: boolean | null
+          notifications_email?: boolean | null
+          notifications_sms?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          currency?: string | null
+          id?: string
+          language?: string | null
+          newsletter?: boolean | null
+          notifications_app?: boolean | null
+          notifications_email?: boolean | null
+          notifications_sms?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          city: string | null
+          completed_onboarding: boolean | null
+          country: string | null
+          created_at: string | null
+          email: string | null
+          first_name: string | null
+          id: string
+          last_name: string | null
+          phone: string | null
+          provider_type: string | null
+          updated_at: string | null
+          user_type: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          city?: string | null
+          completed_onboarding?: boolean | null
+          country?: string | null
+          created_at?: string | null
+          email?: string | null
+          first_name?: string | null
+          id: string
+          last_name?: string | null
+          phone?: string | null
+          provider_type?: string | null
+          updated_at?: string | null
+          user_type?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          city?: string | null
+          completed_onboarding?: boolean | null
+          country?: string | null
+          created_at?: string | null
+          email?: string | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          phone?: string | null
+          provider_type?: string | null
+          updated_at?: string | null
+          user_type?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
