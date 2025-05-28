@@ -7,10 +7,10 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 
 const UserProfile = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUserProfile } = useAuth();
   const navigate = useNavigate();
   
-  // Define the user data interface
+  // Define the user data interface that extends the User type
   interface UserData {
     firstName: string;
     lastName: string;
@@ -19,7 +19,7 @@ const UserProfile = () => {
     address: string;
     city: string;
     country: string;
-    userType: string;
+    userType: 'seeker' | 'provider'; // Match the UserType from AuthContext
     notifications: {
       email: boolean;
       sms: boolean;
@@ -125,16 +125,40 @@ const UserProfile = () => {
     }
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // In a real app, this would send the updated data to an API
-    setUserData(formData);
-    setIsEditing(false);
-    
-    // Show success message
-    setShowSuccessMessage(true);
-    setTimeout(() => setShowSuccessMessage(false), 3000);
+    try {
+      // Use the updateUserProfile function from AuthContext
+      // Convert UserData to Partial<User>
+      const userDataToUpdate = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        phone: formData.phone,
+        address: formData.address,
+        city: formData.city,
+        country: formData.country,
+        userType: formData.userType,
+        notifications: formData.notifications,
+        preferences: formData.preferences
+      };
+      
+      const result = await updateUserProfile(userDataToUpdate);
+      
+      if (result.success) {
+        setUserData(formData);
+        setIsEditing(false);
+        
+        // Show success message
+        setShowSuccessMessage(true);
+        setTimeout(() => setShowSuccessMessage(false), 3000);
+      } else {
+        // Handle error
+        console.error('Failed to update profile:', result.message);
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+    }
   };
   
   return (
@@ -160,7 +184,7 @@ const UserProfile = () => {
                     : 'text-gray-700 hover:bg-gray-100'
                 }`}
               >
-                <User className="h-5 w-5 mr-3" />
+                <UserIcon className="h-5 w-5 mr-3" />
                 Personal Info
               </button>
               

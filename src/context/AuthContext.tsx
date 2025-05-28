@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { Session, AuthChangeEvent } from '@supabase/supabase-js';
+import { supabase, isDevelopmentMode } from '../supabase/client';
 
 // Define user types
 export type UserType = 'seeker' | 'provider';
@@ -14,6 +16,7 @@ export interface User {
   city?: string;
   country?: string;
   userType: UserType;
+  avatarUrl?: string | null;
   notifications?: {
     email: boolean;
     sms: boolean;
@@ -26,31 +29,20 @@ export interface User {
   };
 }
 
-// Define auth context interface
-interface AuthContextType {
-  user: User | null;
-  isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; message: string }>;
-  logout: () => void;
-  register: (userData: Partial<User>, password: string) => Promise<{ success: boolean; message: string }>;
-}
-
-// Create auth context
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-// Dummy users for testing
-const dummyUsers = [
-  {
-    id: '1',
-    firstName: 'John',
-    lastName: 'Doe',
-    email: 'seeker@example.com',
-    password: 'seeker123', // In a real app, passwords would be hashed
-    phone: '+90 533 123 4567',
-    address: '123 Beach Road',
-    city: 'Kyrenia',
-    country: 'North Cyprus',
-    userType: 'seeker' as UserType,
+// Map database profile to our User interface
+const mapProfileToUser = (profile: any): User => {
+  return {
+    id: profile.id,
+    firstName: profile.first_name,
+    lastName: profile.last_name,
+    email: profile.email,
+    phone: profile.phone || '',
+    address: profile.address,
+    city: profile.city,
+    country: profile.country,
+    userType: profile.user_type,
+    avatarUrl: profile.avatar_url,
+    // We'll fetch these separately if needed
     notifications: {
       email: true,
       sms: false,
@@ -61,139 +53,408 @@ const dummyUsers = [
       language: 'English',
       newsletter: true
     }
-  },
-  {
-    id: '2',
-    firstName: 'Jane',
-    lastName: 'Smith',
-    email: 'provider@example.com',
-    password: 'provider123', // In a real app, passwords would be hashed
-    phone: '+90 542 987 6543',
-    address: '456 Mountain View',
-    city: 'Famagusta',
-    country: 'North Cyprus',
-    userType: 'provider' as UserType,
-    notifications: {
-      email: true,
-      sms: true,
-      app: true
-    },
-    preferences: {
-      currency: 'EUR',
-      language: 'English',
-      newsletter: false
-    }
-  }
-];
+  };
+};
+
+// Define auth context interface
+interface AuthContextType {
+  user: User | null;
+  isAuthenticated: boolean;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<{ success: boolean; message: string }>;
+  logout: () => void;
+  register: (userData: Partial<User>, password: string) => Promise<{ success: boolean; message: string }>;
+  updateUserProfile: (userData: Partial<User>) => Promise<{ success: boolean; message: string }>;
+}
+
+// Create auth context
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Create auth provider component
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
   
-  // Check for existing session on mount
+  // Listen for auth state changes
   useEffect(() => {
-    const storedUser = localStorage.getItem('cyprusStaysUser');
-    if (storedUser) {
+    // Get the current session
+    const getInitialSession = async () => {
       try {
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
-        setIsAuthenticated(true);
+        setLoading(true);
+        
+        // Check if we have a session
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session) {
+          try {
+            // Fetch the user profile
+            const { data: profile, error } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
+            
+            if (error) {
+              console.error('Error fetching profile:', error);
+              // For development, create a mock user to prevent blank screen
+              const mockUser: User = {
+                id: session.user.id,
+                firstName: 'Demo',
+                lastName: 'User',
+                email: session.user.email || 'demo@example.com',
+                phone: '',
+                userType: 'seeker',
+                notifications: {
+                  email: true,
+                  sms: false,
+                  app: true
+                },
+                preferences: {
+                  currency: 'USD',
+                  language: 'English',
+                  newsletter: true
+                }
+              };
+              setUser(mockUser);
+              setIsAuthenticated(true);
+            } else if (profile) {
+              setUser(mapProfileToUser(profile));
+              setIsAuthenticated(true);
+            }
+          } catch (profileError) {
+            console.error('Error in profile fetch:', profileError);
+          }
+        }
       } catch (error) {
-        console.error('Failed to parse stored user:', error);
-        localStorage.removeItem('cyprusStaysUser');
+        console.error('Error getting initial session:', error);
+      } finally {
+        setLoading(false);
       }
+    };
+    
+    getInitialSession();
+    
+    // Set up the auth state listener
+    let subscription: { unsubscribe: () => void } = { unsubscribe: () => {} };
+    
+    try {
+      const authListener = supabase.auth.onAuthStateChange(
+        async (event: AuthChangeEvent, session: Session | null) => {
+          if (session && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
+            try {
+              // Fetch the user profile
+              const { data: profile, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', session.user.id)
+                .single();
+              
+              if (error) {
+                console.error('Error fetching profile on auth change:', error);
+                // For development, create a mock user
+                const mockUser: User = {
+                  id: session.user.id,
+                  firstName: 'Demo',
+                  lastName: 'User',
+                  email: session.user.email || 'demo@example.com',
+                  phone: '',
+                  userType: 'seeker',
+                  notifications: {
+                    email: true,
+                    sms: false,
+                    app: true
+                  },
+                  preferences: {
+                    currency: 'USD',
+                    language: 'English',
+                    newsletter: true
+                  }
+                };
+                setUser(mockUser);
+                setIsAuthenticated(true);
+              } else if (profile) {
+                setUser(mapProfileToUser(profile));
+                setIsAuthenticated(true);
+              }
+            } catch (profileError) {
+              console.error('Error in profile fetch during auth change:', profileError);
+            }
+          } else if (event === 'SIGNED_OUT') {
+            setUser(null);
+            setIsAuthenticated(false);
+          }
+        }
+      );
+      
+      if (authListener && authListener.data) {
+        subscription = authListener.data.subscription;
+      }
+    } catch (error) {
+      console.error('Error setting up auth listener:', error);
     }
+    
+    // Cleanup subscription on unmount
+    return () => {
+      try {
+        subscription.unsubscribe();
+      } catch (error) {
+        console.error('Error unsubscribing:', error);
+      }
+    };
   }, []);
   
   // Login function
-  const login = async (email: string, password: string): Promise<{ success: boolean; message: string }> => {
-    // In a real app, this would be an API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const foundUser = dummyUsers.find(
-          (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password
-        );
+  const login = async (email: string, password: string) => {
+    try {
+      // For development, create a mock user if in development mode
+      if (isDevelopmentMode) {
+        console.log('Using mock authentication for development');
         
-        if (foundUser) {
-          // Remove password before storing in state
-          const { password: _, ...userWithoutPassword } = foundUser;
-          setUser(userWithoutPassword);
+        // Create a mock user for development
+        const mockUser: User = {
+          id: '123456',
+          firstName: 'Demo',
+          lastName: 'User',
+          email: email,
+          phone: '555-1234',
+          address: '123 Main St',
+          city: 'New York',
+          country: 'USA',
+          userType: 'seeker',
+          avatarUrl: null,
+          notifications: {
+            email: true,
+            sms: false,
+            app: true
+          },
+          preferences: {
+            currency: 'USD',
+            language: 'English',
+            newsletter: true
+          }
+        };
+        
+        setUser(mockUser);
+        setIsAuthenticated(true);
+        return { success: true, message: 'Mock login successful' };
+      }
+      
+      // Real authentication with Supabase
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (error) {
+        return { success: false, message: error.message };
+      }
+      
+      if (data.user) {
+        // Fetch the user profile
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
+        
+        if (profile) {
+          setUser(mapProfileToUser(profile));
           setIsAuthenticated(true);
-          
-          // Store in localStorage for persistence
-          localStorage.setItem('cyprusStaysUser', JSON.stringify(userWithoutPassword));
-          
-          resolve({ success: true, message: 'Login successful' });
+          return { success: true, message: 'Login successful' };
         } else {
-          resolve({ success: false, message: 'Invalid email or password' });
+          return { success: false, message: 'User profile not found' };
         }
-      }, 1000); // Simulate network delay
-    });
+      } else {
+        return { success: false, message: 'Login failed' };
+      }
+    } catch (error: any) {
+      let errorMessage = 'Login failed';
+      
+      if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      return { success: false, message: errorMessage };
+    }
   };
   
   // Logout function
-  const logout = () => {
-    setUser(null);
-    setIsAuthenticated(false);
-    localStorage.removeItem('cyprusStaysUser');
+  const logout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      setUser(null);
+      setIsAuthenticated(false);
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
   };
   
   // Register function
   const register = async (userData: Partial<User>, password: string): Promise<{ success: boolean; message: string }> => {
-    // In a real app, this would be an API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const existingUser = dummyUsers.find(
-          (u) => u.email.toLowerCase() === userData.email?.toLowerCase()
-        );
+    if (!userData.email) {
+      return { success: false, message: 'Email is required' };
+    }
+    
+    try {
+      // Create user in Supabase Auth
+      const { data, error } = await supabase.auth.signUp({
+        email: userData.email,
+        password,
+        options: {
+          data: {
+            first_name: userData.firstName,
+            last_name: userData.lastName
+          }
+        }
+      });
+      
+      if (error) throw error;
+      
+      if (data.user) {
+        // Create user profile in the profiles table
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert([
+            {
+              id: data.user.id,
+              first_name: userData.firstName || '',
+              last_name: userData.lastName || '',
+              email: userData.email,
+              phone: userData.phone || '',
+              address: userData.address || '',
+              city: userData.city || '',
+              country: userData.country || '',
+              user_type: userData.userType || 'seeker',
+              created_at: new Date().toISOString()
+            }
+          ]);
         
-        if (existingUser) {
-          resolve({ success: false, message: 'Email already in use' });
-        } else {
-          // Create new user
-          const newUser = {
-            id: Math.random().toString(36).substr(2, 9),
-            firstName: userData.firstName || '',
-            lastName: userData.lastName || '',
-            email: userData.email || '',
-            password, // In a real app, this would be hashed
-            phone: userData.phone || '',
-            address: userData.address || '',
-            city: userData.city || '',
-            country: userData.country || '',
-            userType: userData.userType || 'seeker',
-            notifications: {
-              email: true,
-              sms: false,
-              app: true
-            },
-            preferences: {
+        if (profileError) {
+          console.error('Error creating user profile:', profileError);
+          return { success: false, message: 'Error creating user profile' };
+        }
+        
+        // Create user settings
+        const { error: settingsError } = await supabase
+          .from('user_settings')
+          .insert([
+            {
+              user_id: data.user.id,
+              notifications_email: true,
+              notifications_sms: false,
+              notifications_app: true,
               currency: 'USD',
               language: 'English',
-              newsletter: true
+              newsletter: true,
+              created_at: new Date().toISOString()
             }
-          };
-          
-          // Add to dummy users (in a real app, this would be saved to a database)
-          dummyUsers.push(newUser);
-          
-          // Remove password before storing in state
-          const { password: _, ...userWithoutPassword } = newUser;
-          setUser(userWithoutPassword);
-          setIsAuthenticated(true);
-          
-          // Store in localStorage for persistence
-          localStorage.setItem('cyprusStaysUser', JSON.stringify(userWithoutPassword));
-          
-          resolve({ success: true, message: 'Registration successful' });
+          ]);
+        
+        if (settingsError) {
+          console.error('Error creating user settings:', settingsError);
         }
-      }, 1000); // Simulate network delay
-    });
+        
+        return { success: true, message: 'Registration successful' };
+      }
+      
+      return { success: false, message: 'Registration failed' };
+    } catch (error: any) {
+      let errorMessage = 'Registration failed';
+      
+      if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      return { success: false, message: errorMessage };
+    }
+  };
+  
+  // Update user profile
+  const updateUserProfile = async (userData: Partial<User>): Promise<{ success: boolean; message: string }> => {
+    if (!user || !user.id) {
+      return { success: false, message: 'User not authenticated' };
+    }
+    
+    try {
+      // Map our User interface to database fields
+      const profileData = {
+        first_name: userData.firstName,
+        last_name: userData.lastName,
+        phone: userData.phone,
+        address: userData.address,
+        city: userData.city,
+        country: userData.country,
+        user_type: userData.userType,
+        avatar_url: userData.avatarUrl,
+        updated_at: new Date().toISOString()
+      };
+      
+      // Remove undefined values
+      Object.keys(profileData).forEach(key => {
+        if (profileData[key as keyof typeof profileData] === undefined) {
+          delete profileData[key as keyof typeof profileData];
+        }
+      });
+      
+      // Update profile in Supabase
+      const { error } = await supabase
+        .from('profiles')
+        .update(profileData)
+        .eq('id', user.id);
+      
+      if (error) throw error;
+      
+      // Update notifications and preferences if provided
+      if (userData.notifications || userData.preferences) {
+        const settingsData: any = {
+          updated_at: new Date().toISOString()
+        };
+        
+        if (userData.notifications) {
+          settingsData.notifications_email = userData.notifications.email;
+          settingsData.notifications_sms = userData.notifications.sms;
+          settingsData.notifications_app = userData.notifications.app;
+        }
+        
+        if (userData.preferences) {
+          settingsData.currency = userData.preferences.currency;
+          settingsData.language = userData.preferences.language;
+          settingsData.newsletter = userData.preferences.newsletter;
+        }
+        
+        const { error: settingsError } = await supabase
+          .from('user_settings')
+          .update(settingsData)
+          .eq('user_id', user.id);
+        
+        if (settingsError) {
+          console.error('Error updating user settings:', settingsError);
+        }
+      }
+      
+      // Update local user state
+      setUser(prev => prev ? { ...prev, ...userData } : null);
+      
+      return { success: true, message: 'Profile updated successfully' };
+    } catch (error: any) {
+      console.error('Error updating profile:', error);
+      return { success: false, message: error.message || 'Failed to update profile' };
+    }
   };
   
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, login, logout, register }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      isAuthenticated, 
+      loading,
+      login, 
+      logout, 
+      register, 
+      updateUserProfile 
+    }}>
       {children}
     </AuthContext.Provider>
   );
@@ -208,14 +469,4 @@ export const useAuth = () => {
   return context;
 };
 
-// Export dummy credentials for testing
-export const dummyCredentials = {
-  seeker: {
-    email: 'seeker@example.com',
-    password: 'seeker123'
-  },
-  provider: {
-    email: 'provider@example.com',
-    password: 'provider123'
-  }
-};
+

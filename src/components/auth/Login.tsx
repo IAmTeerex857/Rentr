@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Mail, Lock, Eye, EyeOff, LogIn } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth, dummyCredentials } from '../../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 
 const Login = () => {
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: '',
@@ -63,8 +63,8 @@ const Login = () => {
         const result = await login(formData.email, formData.password);
         
         if (result.success) {
-          // Get the user type from the email (since we know our test data)
-          const isProvider = formData.email.toLowerCase() === dummyCredentials.provider.email.toLowerCase();
+          // Check user type from the authenticated user data
+          const isProvider = user?.userType === 'provider';
           
           if (isProvider) {
             navigate('/dashboard'); // Providers go to dashboard
@@ -97,28 +97,6 @@ const Login = () => {
             create a new account
           </Link>
         </p>
-      </div>
-
-      {/* Demo Credentials Box */}
-      <div className="mt-4 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3 flex-1 md:flex md:justify-between">
-              <div>
-                <p className="text-sm text-blue-700 font-medium">Demo Credentials</p>
-                <div className="mt-1 text-sm text-blue-600">
-                  <p><strong>Property Seeker:</strong> {dummyCredentials.seeker.email} / {dummyCredentials.seeker.password}</p>
-                  <p><strong>Property Provider:</strong> {dummyCredentials.provider.email} / {dummyCredentials.provider.password}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
       
       <div className="mt-4 sm:mx-auto sm:w-full sm:max-w-md">
