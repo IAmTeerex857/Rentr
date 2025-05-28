@@ -1,15 +1,13 @@
 import React from "react";
 import { CheckCircle, User, Building, ArrowRight } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../../../context/AuthContext";
 
 interface SuccessStepProps {
 	userType: string;
 	formData?: any;
 }
 
-const SuccessStep: React.FC<SuccessStepProps> = ({ userType, formData }) => {
-	const { user } = useAuth();
+const SuccessStep: React.FC<SuccessStepProps> = ({ userType }) => {
 	const navigate = useNavigate();
 
 	const handleStartExploring = () => {

@@ -1,14 +1,4 @@
 import { useState } from "react";
-import {
-	ArrowLeft,
-	ArrowRight,
-	User,
-	Building,
-	CheckCircle,
-	Mail,
-	Lock,
-	UserCircle,
-} from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { Link } from "react-router-dom";
 
@@ -18,6 +8,7 @@ import CredentialsStep from "../components/auth/register-steps/CredentialsStep";
 import ProfileInfoStep from "../components/auth/register-steps/ProfileInfoStep";
 import TermsStep from "../components/auth/register-steps/TermsStep";
 import SuccessStep from "../components/auth/register-steps/SuccessStep";
+import { RegisterFormData } from "../components/auth/register-steps/types";
 
 const Register = () => {
 	const { register } = useAuth();
@@ -25,7 +16,7 @@ const Register = () => {
 	const [currentStep, setCurrentStep] = useState(1);
 
 	// Form data state
-	const [formData, setFormData] = useState({
+	const [formData, setFormData] = useState<RegisterFormData>({
 		userType: "", // 'seeker' or 'provider'
 		providerType: "", // 'agent' or 'homeowner', only if userType is 'provider'
 		email: "",
@@ -96,6 +87,7 @@ const Register = () => {
 						formData={formData}
 						updateFormData={updateFormData}
 						nextStep={nextStep}
+						prevStep={prevStep}
 					/>
 				);
 			case 2:

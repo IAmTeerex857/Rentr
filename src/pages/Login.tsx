@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const Login = () => {
-	const { login, user } = useAuth();
+	const { login, user, loginWithOauth, loading: isLoading } = useAuth();
 	const navigate = useNavigate();
 	const [formData, setFormData] = useState({
 		email: "",
@@ -19,7 +19,6 @@ const Login = () => {
 	}>({});
 
 	const [showPassword, setShowPassword] = useState(false);
-	const [isLoading, setIsLoading] = useState(false);
 
 	const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const { name, value, type, checked } = e.target;
@@ -57,8 +56,6 @@ const Login = () => {
 		setErrors(newErrors);
 
 		if (Object.keys(newErrors).length === 0) {
-			setIsLoading(true);
-
 			try {
 				const result = await login(formData.email, formData.password);
 
@@ -78,8 +75,6 @@ const Login = () => {
 				setErrors({
 					general: "An unexpected error occurred. Please try again.",
 				});
-			} finally {
-				setIsLoading(false);
 			}
 		}
 	};
@@ -285,6 +280,7 @@ const Login = () => {
 								<a
 									href="#"
 									className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+									onClick={() => loginWithOauth("google")}
 								>
 									<span className="sr-only">
 										Sign in with Google
@@ -304,6 +300,7 @@ const Login = () => {
 								<a
 									href="#"
 									className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+									onClick={() => loginWithOauth("facebook")}
 								>
 									<span className="sr-only">
 										Sign in with Facebook
