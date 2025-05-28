@@ -17,7 +17,7 @@ const Register = () => {
 
 	// Form data state
 	const [formData, setFormData] = useState<RegisterFormData>({
-		userType: "", // 'seeker' or 'provider'
+		userType: "" as any, // 'seeker' or 'provider'
 		providerType: "", // 'agent' or 'homeowner', only if userType is 'provider'
 		email: "",
 		password: "",
@@ -37,12 +37,15 @@ const Register = () => {
 	};
 
 	// Go to next step
-	const nextStep = () => {
+	const nextStep = async () => {
+		if (currentStep === 4) {
+			await register(formData, formData.password);
+		}
 		setCurrentStep((prev) => Math.min(prev + 1, 5));
 	};
 
 	// Go to previous step
-	const prevStep = () => {
+	const prevStep = async () => {
 		setCurrentStep((prev) => Math.max(prev - 1, 1));
 	};
 

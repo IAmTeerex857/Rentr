@@ -12,23 +12,28 @@ export interface User {
 	lastName: string;
 	email: string;
 	phone: string;
-	address?: string;
 	city: string;
 	country: string;
 	userType: UserType;
 	providerType: string;
-	avatarUrl?: string | null;
-	notifications?: {
-		email: boolean;
-		sms: boolean;
-		app: boolean;
-	};
-	preferences?: {
-		currency: string;
-		language: string;
-		newsletter: boolean;
+	avatarUrl: string | null;
+	settings: {
+		notifications: {
+			email: boolean;
+			sms: boolean;
+			app: boolean;
+		};
+		preferences: {
+			currency: string;
+			language: string;
+			newsletter: boolean;
+		};
 	};
 }
+
+export type UserFormData = Omit<User, "id" | "avatarUrl"> & {
+	avatar: File | null;
+};
 
 // Map database profile to our User interface
 const mapProfileToUser = (profile: any): User => {
@@ -38,22 +43,23 @@ const mapProfileToUser = (profile: any): User => {
 		lastName: profile.last_name,
 		email: profile.email,
 		phone: profile.phone || "",
-		address: profile.address,
 		city: profile.city,
 		country: profile.country,
 		userType: profile.user_type,
 		providerType: profile.provider_type,
 		avatarUrl: profile.avatar_url,
 		// We'll fetch these separately if needed
-		notifications: {
-			email: true,
-			sms: false,
-			app: true,
-		},
-		preferences: {
-			currency: "USD",
-			language: "English",
-			newsletter: true,
+		settings: {
+			notifications: {
+				email: true,
+				sms: false,
+				app: true,
+			},
+			preferences: {
+				currency: "USD",
+				language: "English",
+				newsletter: true,
+			},
 		},
 	};
 };
@@ -63,6 +69,7 @@ interface AuthContextType {
 	user: User | null;
 	isAuthenticated: boolean;
 	loading: boolean;
+	initializing: boolean;
 	login: (
 		email: string,
 		password: string,
@@ -70,11 +77,11 @@ interface AuthContextType {
 	loginWithOauth: (type: "google" | "facebook") => Promise<void>;
 	logout: () => void;
 	register: (
-		userData: Partial<User>,
+		userData: Omit<UserFormData, "settings">,
 		password: string,
 	) => Promise<{ success: boolean; message: string }>;
 	updateUserProfile: (
-		userData: Partial<User>,
+		userData: Partial<UserFormData>,
 	) => Promise<{ success: boolean; message: string }>;
 }
 
@@ -87,22 +94,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
 	const [user, setUser] = useState<User | null>(null);
 	const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-	const [loading, setLoading] = useState<boolean>(true);
+	const [loading, setLoading] = useState<boolean>(false);
+	const [initializing, setInitializing] = useState<boolean>(true);
 
 	const loadUserProfile = async (userId: string) => {
 		try {
 			// Fetch the user profile
-			const { data: profile, error } = await supabase
+			const { data: profile, error: profileError } = await supabase
 				.from("profiles")
 				.select("*")
 				.eq("id", userId)
 				.single();
 
-			if (error) throw error;
-			if (profile) {
-				setUser(mapProfileToUser(profile));
-				setIsAuthenticated(true);
-			}
+			if (profileError) throw profileError;
+
+			const { data: settings, error: settingsError } = await supabase
+				.from("user_settings")
+				.select("*")
+				.eq("user_id", userId)
+				.single();
+
+			if (settingsError) throw settingsError;
+
+			setUser(mapProfileToUser({ ...profile, settings }));
+			setIsAuthenticated(true);
 		} catch (profileError) {
 			console.error("Error loading user profile:", profileError);
 		}
@@ -110,6 +125,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
 	// Listen for auth state changes
 	useEffect(() => {
+		setInitializing(true);
 		// Get the current session
 		const getInitialSession = async () => {
 			try {
@@ -150,6 +166,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			subscription = authListener.data.subscription;
 		} catch (error) {
 			console.error("Error setting up auth listener:", error);
+		} finally {
+			setInitializing(false);
 		}
 
 		// Cleanup subscription on unmount
@@ -174,11 +192,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			if (error) throw error;
 
 			await loadUserProfile(data.user.id);
+			setLoading(false);
 			return { success: true, message: "Login successful" };
 		} catch (error: any) {
-			return { success: false, message: error.message || "Login failed" };
-		} finally {
 			setLoading(false);
+			return { success: false, message: error.message || "Login failed" };
 		}
 	};
 
@@ -200,94 +218,73 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
 	// Register function
 	const register = async (
-		userData: Partial<User>,
+		userData: Omit<UserFormData, "settings">,
 		password: string,
 	): Promise<{ success: boolean; message: string }> => {
-		setLoading(true);
-
-		if (!userData.email) {
-			return { success: false, message: "Email is required" };
-		}
-
 		try {
+			setLoading(true);
+
 			// Create user in Supabase Auth
 			const { data, error } = await supabase.auth.signUp({
 				email: userData.email,
 				password,
-				options: {
-					data: {
-						first_name: userData.firstName,
-						last_name: userData.lastName,
-					},
-				},
+				options: { data: userData },
 			});
 
 			if (error) throw error;
 
-			if (data.user) {
-				// Create user profile in the profiles table
-				const { error: profileError } = await supabase
-					.from("profiles")
-					.insert([
-						{
-							id: data.user.id,
-							first_name: userData.firstName || "",
-							last_name: userData.lastName || "",
-							email: userData.email,
-							phone: userData.phone || "",
-							address: userData.address || "",
-							city: userData.city || "",
-							country: userData.country || "",
-							user_type: userData.userType || "seeker",
-							created_at: new Date().toISOString(),
-						},
-					]);
+			if (!data.user) throw new Error("failed to signup");
 
-				if (profileError) {
-					console.error("Error creating user profile:", profileError);
-					return {
-						success: false,
-						message: "Error creating user profile",
-					};
-				}
+			const now = new Date().toISOString();
 
-				// Create user settings
-				const { error: settingsError } = await supabase
-					.from("user_settings")
-					.insert([
-						{
-							user_id: data.user.id,
-							notifications_email: true,
-							notifications_sms: false,
-							notifications_app: true,
-							currency: "USD",
-							language: "English",
-							newsletter: true,
-							created_at: new Date().toISOString(),
-						},
-					]);
+			const { error: profileError } = await supabase
+				.from("profiles")
+				.insert([
+					{
+						id: data.user.id,
+						first_name: userData.firstName,
+						last_name: userData.lastName,
+						email: userData.email,
+						phone: userData.phone,
+						city: userData.city,
+						country: userData.country,
+						user_type: userData.userType,
+						provider_type: userData.providerType,
+						avatar_url: await uploadAvatar(userData.avatar),
+						created_at: now,
+						updated_at: now,
+					},
+				]);
 
-				if (settingsError) {
-					console.error(
-						"Error creating user settings:",
-						settingsError,
-					);
-				}
+			if (profileError) throw profileError;
 
-				return { success: true, message: "Registration successful" };
-			}
+			// Create user settings
+			const { error: settingsError } = await supabase
+				.from("user_settings")
+				.insert([
+					{
+						user_id: data.user.id,
+						notifications_email: true,
+						notifications_sms: false,
+						notifications_app: true,
+						currency: "USD",
+						language: "English",
+						newsletter: true,
+						created_at: now,
+						updated_at: now,
+					},
+				]);
 
-			return { success: false, message: "Registration failed" };
-		} catch (error: any) {
-			let errorMessage = "Registration failed";
+			if (settingsError) throw settingsError;
 
-			if (error.message) {
-				errorMessage = error.message;
-			}
-
-			return { success: false, message: errorMessage };
-		} finally {
 			setLoading(false);
+			return { success: true, message: "Registration successful" };
+		} catch (error: any) {
+			setLoading(false);
+			return {
+				success: false,
+				message: error.message || "Registration failed",
+			};
 		}
 	};
 
@@ -295,36 +292,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		console.log(type);
 	};
 
+	const uploadAvatar = async (avatar: File | null) => {
+		if (!avatar) return null;
+	};
+
 	// Update user profile
 	const updateUserProfile = async (
-		userData: Partial<User>,
+		userData: Partial<UserFormData>,
 	): Promise<{ success: boolean; message: string }> => {
-		if (!user || !user.id) {
-			return { success: false, message: "User not authenticated" };
-		}
-
 		try {
+			const now = new Date().toISOString();
+
+			if (!user || !user.id) throw new Error("User not authenticated");
+
 			// Map our User interface to database fields
-			const profileData = {
-				first_name: userData.firstName,
-				last_name: userData.lastName,
-				phone: userData.phone,
-				address: userData.address,
-				city: userData.city,
-				country: userData.country,
-				user_type: userData.userType,
-				avatar_url: userData.avatarUrl,
-				updated_at: new Date().toISOString(),
+			const profileData: any = {
+				updated_at: now,
 			};
 
-			// Remove undefined values
-			Object.keys(profileData).forEach((key) => {
-				if (
-					profileData[key as keyof typeof profileData] === undefined
-				) {
-					delete profileData[key as keyof typeof profileData];
-				}
-			});
+			if (userData.firstName) profileData.first_name = userData.firstName;
+			if (userData.lastName) profileData.last_name = userData.lastName;
+			if (userData.avatar)
+				profileData.avatar_url = await uploadAvatar(userData.avatar);
+			if (userData.phone) profileData.phone = userData.phone;
+			if (userData.city) profileData.city = userData.city;
+			if (userData.country) profileData.country = userData.country;
+			if (userData.userType) profileData.user_type = userData.userType;
+			if (userData.providerType)
+				profileData.provider_type = userData.providerType;
 
 			// Update profile in Supabase
 			const { error } = await supabase
@@ -335,22 +330,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			if (error) throw error;
 
 			// Update notifications and preferences if provided
-			if (userData.notifications || userData.preferences) {
+			if (
+				userData.settings?.notifications ||
+				userData.settings?.preferences
+			) {
 				const settingsData: any = {
-					updated_at: new Date().toISOString(),
+					updated_at: now,
 				};
 
-				if (userData.notifications) {
+				if (userData.settings.notifications) {
 					settingsData.notifications_email =
-						userData.notifications.email;
-					settingsData.notifications_sms = userData.notifications.sms;
-					settingsData.notifications_app = userData.notifications.app;
+						userData.settings.notifications.email;
+					settingsData.notifications_sms =
+						userData.settings.notifications.sms;
+					settingsData.notifications_app =
+						userData.settings.notifications.app;
 				}
 
-				if (userData.preferences) {
-					settingsData.currency = userData.preferences.currency;
-					settingsData.language = userData.preferences.language;
-					settingsData.newsletter = userData.preferences.newsletter;
+				if (userData.settings.preferences) {
+					settingsData.currency =
+						userData.settings.preferences.currency;
+					settingsData.language =
+						userData.settings.preferences.language;
+					settingsData.newsletter =
+						userData.settings.preferences.newsletter;
 				}
 
 				const { error: settingsError } = await supabase
@@ -358,16 +361,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 					.update(settingsData)
 					.eq("user_id", user.id);
 
-				if (settingsError) {
-					console.error(
-						"Error updating user settings:",
-						settingsError,
-					);
-				}
+				if (settingsError) throw settingsError;
 			}
 
-			// Update local user state
-			setUser((prev) => (prev ? { ...prev, ...userData } : null));
+			await loadUserProfile(user.id);
 
 			return { success: true, message: "Profile updated successfully" };
 		} catch (error: any) {
@@ -385,6 +382,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				user,
 				isAuthenticated,
 				loading,
+				initializing,
 				login,
 				loginWithOauth,
 				logout,

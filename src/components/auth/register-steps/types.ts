@@ -1,4 +1,4 @@
-import { User } from "../../../context/AuthContext";
+import { UserFormData } from "../../../context/AuthContext";
 
 export type CommonProps = {
 	formData: RegisterFormData;
@@ -7,9 +7,8 @@ export type CommonProps = {
 	prevStep: () => void;
 };
 
-export type RegisterFormData = Omit<User, "avatarUrl"> & {
+export type RegisterFormData = Omit<UserFormData, "settings"> & {
 	password: string;
 	confirmPassword: string;
-	avatar: File | null;
 	agreeToTerms: boolean;
 };

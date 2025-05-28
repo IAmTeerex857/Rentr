@@ -3,8 +3,9 @@ import {
 	Routes,
 	Route,
 	Navigate,
+	Outlet,
 } from "react-router-dom";
-import { AuthProvider } from "./context/AuthContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 
 // Layout
 import Layout from "./components/layout/Layout";
@@ -20,6 +21,13 @@ import UserProfile from "./pages/UserProfile";
 import Register from "./pages/Register";
 import Login from "./pages/Login";
 
+function ProtectedRoute() {
+	const { isAuthenticated, initializing } = useAuth();
+	if (initializing) return "Loading";
+	if (!isAuthenticated) return <Navigate to="/login" />;
+	return <Outlet />;
+}
+
 function App() {
 	return (
 		<AuthProvider>
@@ -29,25 +37,27 @@ function App() {
 						<Route path="/" element={<Home />} />
 						<Route path="/register" element={<Register />} />
 						<Route path="/login" element={<Login />} />
-						<Route path="/properties" element={<SearchResults />} />
-						<Route
-							path="/properties/:id"
-							element={<PropertyDetails />}
-						/>
-						<Route path="/search" element={<Search />} />
-						<Route
-							path="/dashboard"
-							element={<ProviderDashboard />}
-						/>
-						<Route
-							path="/list-property"
-							element={<ListProperty />}
-						/>
-						<Route path="/profile" element={<UserProfile />} />
+						<Route Component={() => <ProtectedRoute />}>
+							<Route
+								path="/properties"
+								element={<SearchResults />}
+							/>
+							<Route
+								path="/properties/:id"
+								element={<PropertyDetails />}
+							/>
+							<Route path="/search" element={<Search />} />
+							<Route
+								path="/dashboard"
+								element={<ProviderDashboard />}
+							/>
+							<Route
+								path="/list-property"
+								element={<ListProperty />}
+							/>
+							<Route path="/profile" element={<UserProfile />} />
+						</Route>
 
-						{/* Add more routes as they are developed */}
-
-						{/* Fallback route - redirect to home if no match */}
 						<Route path="*" element={<Navigate to="/" replace />} />
 					</Routes>
 				</Layout>
