@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 
 // Step components
 import UserTypeStep from "../components/auth/register-steps/UserTypeStep";
@@ -12,6 +11,7 @@ import { useAuth, UserFormData } from "../context/AuthContext";
 const Onboarding = () => {
 	// State to track current step
 	const [currentStep, setCurrentStep] = useState(1);
+	const [error, setError] = useState<Error>();
 
 	const { updateUserProfile } = useAuth();
 	const form = useForm<UserFormData>();
@@ -20,10 +20,16 @@ const Onboarding = () => {
 
 	// Go to next step
 	const nextStep = async () => {
-		if (currentStep === 3) {
-			await updateUserProfile(form.getValues());
+		try {
+			setError(undefined);
+			if (currentStep === 3) {
+				const result = await updateUserProfile(form.getValues());
+				if (!result.success) throw new Error(result.message);
+			}
+			setCurrentStep((prev) => Math.min(prev + 1, 4));
+		} catch (err: any) {
+			setError(err);
 		}
-		setCurrentStep((prev) => Math.min(prev + 1, 4));
 	};
 
 	// Go to previous step
@@ -98,6 +104,14 @@ const Onboarding = () => {
 	return (
 		<div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-center">
 			<div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-md">
+				{error && (
+					<div className="rounded-md bg-red-50 p-4">
+						<h3 className="text-sm text-center font-medium text-red-800">
+							{error.message}
+						</h3>
+					</div>
+				)}
+
 				<div>
 					<h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
 						{currentStep === 4
@@ -108,14 +122,6 @@ const Onboarding = () => {
 						{currentStep === 4
 							? "You can now access all features. "
 							: "Join North Cyprus AirBnB to find or list properties. "}
-						{currentStep === 4 && (
-							<Link
-								to="/login"
-								className="font-medium text-rose-600 hover:text-rose-500"
-							>
-								Sign in to your account
-							</Link>
-						)}
 					</p>
 				</div>
 

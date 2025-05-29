@@ -153,7 +153,9 @@ const UserTypeStep: React.FC<UserTypeStepProps> = ({ form, nextStep }) => {
 			<div className="pt-4">
 				<button
 					type="submit"
-					disabled={!form.formState.isValid}
+					disabled={
+						!form.formState.isValid || form.formState.isSubmitting
+					}
 					className="w-full disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500"
 				>
 					Continue <ArrowRight className="ml-2 h-4 w-4" />

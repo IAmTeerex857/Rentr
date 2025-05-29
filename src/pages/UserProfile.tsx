@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useAuth, UserFormData } from "../context/AuthContext";
+import { countries, useAuth, UserFormData } from "../context/AuthContext";
 import {
 	User as UserIcon,
 	Mail,
@@ -12,29 +12,20 @@ import {
 	Lock,
 	LogOut,
 } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { DeepPartial, useForm } from "react-hook-form";
 
 const UserProfile = () => {
 	const { user, logout, updateUserProfile } = useAuth();
 	const navigate = useNavigate();
 
-	const form = useForm<Omit<UserFormData, "settings">>({
-		defaultValues: () => {
-			if (!user) return {};
-			const { settings: _, ...profile } = user;
-			return profile;
-		},
-	});
-	const notificationsForm = useForm<
-		DeepPartial<UserFormData["settings"]["notifications"]>
-	>({ defaultValues: user?.settings.notifications });
-	const preferencesForm = useForm<
-		DeepPartial<UserFormData["settings"]["preferences"]>
-	>({ defaultValues: user?.settings.preferences });
+	const form = useForm<Omit<UserFormData, "settings">>();
+	const notificationsForm =
+		useForm<DeepPartial<UserFormData["settings"]["notifications"]>>();
+	const preferencesForm =
+		useForm<DeepPartial<UserFormData["settings"]["preferences"]>>();
 
 	const notificationsFormData = notificationsForm.watch();
-	const preferencesFormData = preferencesForm.watch();
 
 	// Initialize states
 	const [activeTab, setActiveTab] = useState("personal");
@@ -269,16 +260,37 @@ const UserProfile = () => {
 												<label className="block text-sm font-medium text-gray-700 mb-1">
 													Country
 												</label>
-												<input
-													type="text"
+												<select
+													id="country"
 													{...form.register(
 														"country",
-														{
-															required: true,
-														},
+														{ required: true },
 													)}
-													className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-airbnb-red focus:border-transparent"
-												/>
+													className={`block w-full shadow-sm rounded-md py-3 px-4 border ${
+														form.formState.errors
+															.country
+															? "border-red-300 focus:ring-red-500 focus:border-red-500"
+															: "border-gray-300 focus:ring-rose-500 focus:border-rose-500"
+													}`}
+												>
+													<option value="">
+														Select a country
+													</option>
+													{countries.map(
+														(country) => (
+															<option
+																key={
+																	country.code
+																}
+																value={
+																	country.code
+																}
+															>
+																{country.name}
+															</option>
+														),
+													)}
+												</select>
 											</div>
 
 											<div>
@@ -307,10 +319,11 @@ const UserProfile = () => {
 										<div className="mt-8 flex space-x-4">
 											<button
 												disabled={
-													!form.formState.isValid
+													!form.formState.isValid ||
+													form.formState.isSubmitting
 												}
 												type="submit"
-												className="px-4 py-2 bg-rose-600 text-white rounded-lg text-sm font-medium hover:bg-rose-700 flex items-center"
+												className="disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 bg-rose-600 text-white rounded-lg text-sm font-medium hover:bg-rose-700 flex items-center"
 											>
 												<Save className="h-4 w-4 mr-2" />
 												Save Changes
@@ -573,7 +586,9 @@ const UserProfile = () => {
 										<button
 											disabled={
 												!notificationsForm.formState
-													.isValid
+													.isValid ||
+												notificationsForm.formState
+													.isSubmitting
 											}
 											type="submit"
 											className="px-4 py-2 bg-airbnb-red text-white rounded-lg text-sm font-medium hover:bg-airbnb-red/90"
@@ -619,16 +634,16 @@ const UserProfile = () => {
 												)}
 												className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-airbnb-red focus:border-transparent"
 											>
-												<option value="USD">
+												<option value="usd">
 													USD ($)
 												</option>
-												<option value="EUR">
+												<option value="eur">
 													EUR (€)
 												</option>
-												<option value="GBP">
+												<option value="gbp">
 													GBP (£)
 												</option>
-												<option value="TRY">
+												<option value="try">
 													TRY (₺)
 												</option>
 											</select>
@@ -679,7 +694,9 @@ const UserProfile = () => {
 										<button
 											disabled={
 												!preferencesForm.formState
-													.isValid
+													.isValid ||
+												preferencesForm.formState
+													.isSubmitting
 											}
 											type="submit"
 											className="px-4 py-2 bg-airbnb-red text-white rounded-lg text-sm font-medium hover:bg-airbnb-red/90"

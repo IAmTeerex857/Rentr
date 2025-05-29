@@ -104,7 +104,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				lastName: profile.last_name,
 				phone: profile.phone,
 				completedOnboarding: profile.completed_onboarding,
-				address: profile.city,
+				address: profile.address,
 				city: profile.city,
 				country: profile.country,
 				userType: profile.user_type as UserType,
@@ -292,6 +292,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				const profileData: Database["public"]["Tables"]["profiles"]["Update"] =
 					{
 						updated_at: now,
+						completed_onboarding: true,
 					};
 
 				if (userData.firstName)
@@ -387,3 +388,12 @@ export const useAuth = () => {
 	}
 	return context;
 };
+
+export const countries = [
+	{ code: "cy", name: "Cyprus" },
+	{ code: "tr", name: "Turkey" },
+	{ code: "gb", name: "United Kingdom" },
+	{ code: "de", name: "Germany" },
+	{ code: "ru", name: "Russia" },
+	{ code: "us", name: "United States" },
+];

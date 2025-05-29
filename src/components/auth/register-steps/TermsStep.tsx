@@ -153,7 +153,9 @@ const TermsStep: React.FC<TermsStepProps> = ({ form, nextStep, prevStep }) => {
 				</button>
 
 				<button
-					disabled={!form.formState.isValid}
+					disabled={
+						!form.formState.isValid || form.formState.isSubmitting
+					}
 					type="submit"
 					className="flex disabled:opacity-50 disabled:cursor-not-allowed items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500"
 				>
