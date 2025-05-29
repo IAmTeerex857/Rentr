@@ -33,9 +33,6 @@ function Guard({
 	if (initializing) return "Loading";
 	const check = fn(user, location.pathname);
 	if (typeof check === "string") return <Navigate to={check} />;
-	if (!user) return <Navigate to="/login" />;
-	if (!user.completedOnboarding && location.pathname !== "/onboarding")
-		return <Navigate to="/onboarding" />;
 	return <Outlet />;
 }
 

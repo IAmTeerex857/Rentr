@@ -238,6 +238,22 @@ const UserProfile = () => {
 
 											<div>
 												<label className="block text-sm font-medium text-gray-700 mb-1">
+													Address
+												</label>
+												<input
+													type="text"
+													{...form.register(
+														"address",
+														{
+															required: true,
+														},
+													)}
+													className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-airbnb-red focus:border-transparent"
+												/>
+											</div>
+
+											<div>
+												<label className="block text-sm font-medium text-gray-700 mb-1">
 													City
 												</label>
 												<input
@@ -351,7 +367,8 @@ const UserProfile = () => {
 												</h3>
 												<p className="mt-1 text-lg font-medium text-gray-900 flex items-center">
 													<MapPin className="h-4 w-4 mr-2 text-gray-400" />
-													{user.city}, {user.country}
+													{user.address} {user.city},{" "}
+													{user.country}
 												</p>
 											</div>
 

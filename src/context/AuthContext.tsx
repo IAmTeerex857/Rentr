@@ -3,6 +3,7 @@ import { Subscription } from "@supabase/supabase-js";
 import { supabase } from "../supabase/client";
 import { useLocation, useNavigate } from "react-router-dom";
 import { DeepPartial } from "react-hook-form";
+import { Database } from "../supabase/database.types";
 
 // Define user types
 export type UserType = "seeker" | "provider";
@@ -14,6 +15,7 @@ export interface User {
 	lastName: string;
 	email: string;
 	phone: string;
+	address: string;
 	city: string;
 	country: string;
 	userType: UserType;
@@ -81,41 +83,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				.from("profiles")
 				.select("*")
 				.eq("id", userId)
-				.single();
+				.maybeSingle();
 
 			if (profileError) throw profileError;
+			if (!profile) throw new Error("profile not found");
 
 			const { data: settings, error: settingsError } = await supabase
 				.from("profile_settings")
 				.select("*")
 				.eq("id", userId)
-				.single();
+				.maybeSingle();
 
 			if (settingsError) throw settingsError;
+			if (!settings) throw new Error("settings not found");
 
 			const user: User = {
 				id: profile.id,
-				email: profile.email || "",
-				firstName: profile.first_name || "",
-				lastName: profile.last_name || "",
-				phone: profile.phone || "",
-				completedOnboarding: profile.completed_onboarding || false,
-				city: profile.city || "",
-				country: profile.country || "",
-				userType: (profile.user_type as UserType) || "seeker",
-				providerType: profile.provider_type || "",
+				email: profile.email,
+				firstName: profile.first_name,
+				lastName: profile.last_name,
+				phone: profile.phone,
+				completedOnboarding: profile.completed_onboarding,
+				address: profile.city,
+				city: profile.city,
+				country: profile.country,
+				userType: profile.user_type as UserType,
+				providerType: profile.provider_type,
 				avatarUrl: profile.avatar_url,
 				// We'll fetch these separately if needed
 				settings: {
 					notifications: {
-						email: settings.notifications_email || true,
-						sms: settings.notifications_sms || false,
-						app: settings.notifications_app || true,
+						email: settings.notifications_email,
+						sms: settings.notifications_sms,
+						app: settings.notifications_app,
 					},
 					preferences: {
-						currency: settings.currency || "usd",
-						language: settings.language || "English",
-						newsletter: settings.newsletter || true,
+						currency: settings.currency,
+						language: settings.language,
+						newsletter: settings.newsletter,
 					},
 				},
 			};
@@ -284,9 +289,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			const now = new Date().toISOString();
 			if (Object.keys(userData)) {
 				// Map our User interface to database fields
-				const profileData: any = {
-					updated_at: now,
-				};
+				const profileData: Database["public"]["Tables"]["profiles"]["Update"] =
+					{
+						updated_at: now,
+					};
 
 				if (userData.firstName)
 					profileData.first_name = userData.firstName;
@@ -297,6 +303,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 						userData.avatar,
 					);
 				if (userData.phone) profileData.phone = userData.phone;
+				if (userData.address) profileData.address = userData.address;
 				if (userData.city) profileData.city = userData.city;
 				if (userData.country) profileData.country = userData.country;
 				if (userData.userType)
@@ -315,9 +322,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
 			// Update notifications and preferences if provided
 			if (settings?.notifications || settings?.preferences) {
-				const settingsData: any = {
-					updated_at: now,
-				};
+				const settingsData: Database["public"]["Tables"]["profile_settings"]["Update"] =
+					{
+						updated_at: now,
+					};
 
 				if (settings.notifications) {
 					settingsData.notifications_email =

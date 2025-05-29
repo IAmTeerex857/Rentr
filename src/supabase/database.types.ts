@@ -11,85 +11,88 @@ export type Database = {
     Tables: {
       profile_settings: {
         Row: {
-          created_at: string | null
-          currency: string | null
+          created_at: string
+          currency: string
           id: string
-          language: string | null
-          newsletter: boolean | null
-          notifications_app: boolean | null
-          notifications_email: boolean | null
-          notifications_sms: boolean | null
-          updated_at: string | null
+          language: string
+          newsletter: boolean
+          notifications_app: boolean
+          notifications_email: boolean
+          notifications_sms: boolean
+          updated_at: string
         }
         Insert: {
-          created_at?: string | null
-          currency?: string | null
+          created_at?: string
+          currency?: string
           id: string
-          language?: string | null
-          newsletter?: boolean | null
-          notifications_app?: boolean | null
-          notifications_email?: boolean | null
-          notifications_sms?: boolean | null
-          updated_at?: string | null
+          language?: string
+          newsletter?: boolean
+          notifications_app?: boolean
+          notifications_email?: boolean
+          notifications_sms?: boolean
+          updated_at?: string
         }
         Update: {
-          created_at?: string | null
-          currency?: string | null
+          created_at?: string
+          currency?: string
           id?: string
-          language?: string | null
-          newsletter?: boolean | null
-          notifications_app?: boolean | null
-          notifications_email?: boolean | null
-          notifications_sms?: boolean | null
-          updated_at?: string | null
+          language?: string
+          newsletter?: boolean
+          notifications_app?: boolean
+          notifications_email?: boolean
+          notifications_sms?: boolean
+          updated_at?: string
         }
         Relationships: []
       }
       profiles: {
         Row: {
+          address: string
           avatar_url: string | null
-          city: string | null
-          completed_onboarding: boolean | null
-          country: string | null
-          created_at: string | null
-          email: string | null
-          first_name: string | null
+          city: string
+          completed_onboarding: boolean
+          country: string
+          created_at: string
+          email: string
+          first_name: string
           id: string
-          last_name: string | null
-          phone: string | null
-          provider_type: string | null
-          updated_at: string | null
-          user_type: string | null
+          last_name: string
+          phone: string
+          provider_type: string
+          updated_at: string
+          user_type: string
         }
         Insert: {
+          address?: string
           avatar_url?: string | null
-          city?: string | null
-          completed_onboarding?: boolean | null
-          country?: string | null
-          created_at?: string | null
-          email?: string | null
-          first_name?: string | null
+          city?: string
+          completed_onboarding?: boolean
+          country?: string
+          created_at?: string
+          email: string
+          first_name?: string
           id: string
-          last_name?: string | null
-          phone?: string | null
-          provider_type?: string | null
-          updated_at?: string | null
-          user_type?: string | null
+          last_name?: string
+          phone?: string
+          provider_type?: string
+          updated_at?: string
+          user_type?: string
         }
         Update: {
+          address?: string
           avatar_url?: string | null
-          city?: string | null
-          completed_onboarding?: boolean | null
-          country?: string | null
-          created_at?: string | null
-          email?: string | null
-          first_name?: string | null
+          city?: string
+          completed_onboarding?: boolean
+          country?: string
+          created_at?: string
+          email?: string
+          first_name?: string
           id?: string
-          last_name?: string | null
-          phone?: string | null
-          provider_type?: string | null
-          updated_at?: string | null
-          user_type?: string | null
+          last_name?: string
+          phone?: string
+          provider_type?: string
+          updated_at?: string
+          user_type?: string
         }
         Relationships: []
       }
