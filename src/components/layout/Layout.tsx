@@ -8,7 +8,7 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-	const { user, isAuthenticated, logout } = useAuth();
+	const { user, isAuthenticated, logout, initializing } = useAuth();
 	const navigate = useNavigate();
 	const location = useLocation();
 	// Mobile menu state
@@ -25,6 +25,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 		location.pathname.includes("/register") ||
 		location.pathname.includes("/onboarding") ||
 		location.pathname.includes("/forgot-password");
+
+	if (initializing) return "Loading";
 
 	return (
 		<div className="min-h-screen flex flex-col">

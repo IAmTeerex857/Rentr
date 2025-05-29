@@ -229,10 +229,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	};
 
 	// Register function
-	const register = async (
-		email: string,
-		password: string,
-	): Promise<{ success: boolean; message: string }> => {
+	const register = async (email: string, password: string) => {
 		try {
 			setLoading(true);
 
@@ -258,7 +255,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	};
 
 	const loginWithOauth = async (type: "google" | "facebook") => {
-		console.log(type);
+		supabase.auth.signInWithOAuth({
+			provider: type,
+		});
 	};
 
 	const uploadAvatar = async (avatar: File | null) => {

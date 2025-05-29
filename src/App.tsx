@@ -29,8 +29,7 @@ function Guard({
 	fn: (user: User | null, path: string) => string | undefined;
 }) {
 	const location = useLocation();
-	const { user, initializing } = useAuth();
-	if (initializing) return "Loading";
+	const { user } = useAuth();
 	const check = fn(user, location.pathname);
 	if (typeof check === "string") return <Navigate to={check} />;
 	return <Outlet />;
