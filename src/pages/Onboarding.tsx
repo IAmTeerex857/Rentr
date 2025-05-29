@@ -7,18 +7,22 @@ import ProfileInfoStep from "../components/auth/register-steps/ProfileInfoStep";
 import TermsStep from "../components/auth/register-steps/TermsStep";
 import SuccessStep from "../components/auth/register-steps/SuccessStep";
 import { useForm } from "react-hook-form";
-import { UserFormData } from "../context/AuthContext";
+import { useAuth, UserFormData } from "../context/AuthContext";
 
 const Onboarding = () => {
 	// State to track current step
 	const [currentStep, setCurrentStep] = useState(1);
 
+	const { updateUserProfile } = useAuth();
 	const form = useForm<UserFormData>();
 
 	const formData = form.watch();
 
 	// Go to next step
 	const nextStep = async () => {
+		if (currentStep === 3) {
+			await updateUserProfile(form.getValues());
+		}
 		setCurrentStep((prev) => Math.min(prev + 1, 4));
 	};
 

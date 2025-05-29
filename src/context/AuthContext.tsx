@@ -93,7 +93,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
 			if (settingsError) throw settingsError;
 
-			setUser({
+			const user: User = {
 				id: profile.id,
 				email: profile.email || "",
 				firstName: profile.first_name || "",
@@ -118,7 +118,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 						newsletter: settings.newsletter || true,
 					},
 				},
-			});
+			};
+			setUser(user);
 			setIsAuthenticated(true);
 			if (
 				!profile.completed_onboarding &&
@@ -126,8 +127,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				!skipNav
 			)
 				navigate("/onboarding");
+			return user;
 		} catch (profileError) {
 			console.error("Error loading user profile:", profileError);
+			return user;
 		}
 	};
 
@@ -268,63 +271,65 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	};
 
 	// Update user profile
-	const updateUserProfile = async (
-		userData: DeepPartial<UserFormData>,
-	): Promise<{ success: boolean; message: string }> => {
+	const updateUserProfile = async ({
+		settings,
+		...userData
+	}: DeepPartial<UserFormData>): Promise<{
+		success: boolean;
+		message: string;
+	}> => {
 		try {
-			const now = new Date().toISOString();
-
 			if (!user || !user.id) throw new Error("User not authenticated");
 
-			// Map our User interface to database fields
-			const profileData: any = {
-				updated_at: now,
-			};
+			const now = new Date().toISOString();
+			if (Object.keys(userData)) {
+				// Map our User interface to database fields
+				const profileData: any = {
+					updated_at: now,
+				};
 
-			if (userData.firstName) profileData.first_name = userData.firstName;
-			if (userData.lastName) profileData.last_name = userData.lastName;
-			if (userData.avatar)
-				profileData.avatar_url = await uploadAvatar(userData.avatar);
-			if (userData.phone) profileData.phone = userData.phone;
-			if (userData.city) profileData.city = userData.city;
-			if (userData.country) profileData.country = userData.country;
-			if (userData.userType) profileData.user_type = userData.userType;
-			if (userData.providerType)
-				profileData.provider_type = userData.providerType;
+				if (userData.firstName)
+					profileData.first_name = userData.firstName;
+				if (userData.lastName)
+					profileData.last_name = userData.lastName;
+				if (userData.avatar)
+					profileData.avatar_url = await uploadAvatar(
+						userData.avatar,
+					);
+				if (userData.phone) profileData.phone = userData.phone;
+				if (userData.city) profileData.city = userData.city;
+				if (userData.country) profileData.country = userData.country;
+				if (userData.userType)
+					profileData.user_type = userData.userType;
+				if (userData.providerType)
+					profileData.provider_type = userData.providerType;
 
-			// Update profile in Supabase
-			const { error } = await supabase
-				.from("profiles")
-				.update(profileData)
-				.eq("id", user.id);
+				// Update profile in Supabase
+				const { error } = await supabase
+					.from("profiles")
+					.update(profileData)
+					.eq("id", user.id);
 
-			if (error) throw error;
+				if (error) throw error;
+			}
 
 			// Update notifications and preferences if provided
-			if (
-				userData.settings?.notifications ||
-				userData.settings?.preferences
-			) {
+			if (settings?.notifications || settings?.preferences) {
 				const settingsData: any = {
 					updated_at: now,
 				};
 
-				if (userData.settings.notifications) {
+				if (settings.notifications) {
 					settingsData.notifications_email =
-						userData.settings.notifications.email;
-					settingsData.notifications_sms =
-						userData.settings.notifications.sms;
-					settingsData.notifications_app =
-						userData.settings.notifications.app;
+						settings.notifications.email;
+					settingsData.notifications_sms = settings.notifications.sms;
+					settingsData.notifications_app = settings.notifications.app;
 				}
 
-				if (userData.settings.preferences) {
-					settingsData.currency =
-						userData.settings.preferences.currency;
-					settingsData.language =
-						userData.settings.preferences.language;
-					settingsData.newsletter =
-						userData.settings.preferences.newsletter;
+				if (settings.preferences) {
+					settingsData.currency = settings.preferences.currency;
+					settingsData.language = settings.preferences.language;
+					settingsData.newsletter = settings.preferences.newsletter;
 				}
 
 				const { error: settingsError } = await supabase

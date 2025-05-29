@@ -1,10 +1,10 @@
 import React from "react";
 import { CheckCircle, User, Building, ArrowRight } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { UserType } from "../../../context/AuthContext";
 
 interface SuccessStepProps {
-	userType: string;
-	formData?: any;
+	userType: UserType;
 }
 
 const SuccessStep: React.FC<SuccessStepProps> = ({ userType }) => {
@@ -61,12 +61,6 @@ const SuccessStep: React.FC<SuccessStepProps> = ({ userType }) => {
 						: "List Your First Property"}
 					<ArrowRight className="ml-2 h-4 w-4" />
 				</button>
-
-				<Link to="/login">
-					<button className="w-full flex justify-center items-center py-3 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500">
-						Go to Login
-					</button>
-				</Link>
 			</div>
 		</div>
 	);
