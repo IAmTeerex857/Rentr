@@ -237,6 +237,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			const { data, error } = await supabase.auth.signUp({
 				email,
 				password,
+				options: { emailRedirectTo: window.location.origin },
 			});
 
 			if (error) throw error;
@@ -257,6 +258,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	const loginWithOauth = async (type: "google" | "facebook") => {
 		supabase.auth.signInWithOAuth({
 			provider: type,
+			options: { redirectTo: window.location.origin },
 		});
 	};
 
