@@ -1,14 +1,8 @@
+import { UseFormReturn } from "react-hook-form";
 import { UserFormData } from "../../../context/AuthContext";
 
 export type CommonProps = {
-	formData: RegisterFormData;
-	updateFormData: (data: Partial<RegisterFormData>) => void;
+	form: UseFormReturn<UserFormData>;
 	nextStep: () => void;
 	prevStep: () => void;
-};
-
-export type RegisterFormData = Omit<UserFormData, "settings"> & {
-	password: string;
-	confirmPassword: string;
-	agreeToTerms: boolean;
 };

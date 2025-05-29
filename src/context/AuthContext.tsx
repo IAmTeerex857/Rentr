@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { Subscription } from "@supabase/supabase-js";
 import { supabase } from "../supabase/client";
 import { useLocation, useNavigate } from "react-router-dom";
+import { DeepPartial } from "react-hook-form";
 
 // Define user types
 export type UserType = "seeker" | "provider";
@@ -35,6 +36,7 @@ export interface User {
 
 export type UserFormData = Omit<User, "id" | "avatarUrl"> & {
 	avatar: File | null;
+	agreeToTerms: boolean;
 };
 
 // Define auth context interface
@@ -54,7 +56,7 @@ interface AuthContextType {
 		password: string,
 	) => Promise<{ success: boolean; message: string }>;
 	updateUserProfile: (
-		userData: Partial<UserFormData>,
+		userData: DeepPartial<UserFormData>,
 	) => Promise<{ success: boolean; message: string }>;
 }
 
@@ -72,7 +74,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	const location = useLocation();
 	const navigate = useNavigate();
 
-	const loadUserProfile = async (userId: string) => {
+	const loadUserProfile = async (userId: string, skipNav = false) => {
 		try {
 			// Fetch the user profile
 			const { data: profile, error: profileError } = await supabase
@@ -120,7 +122,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			setIsAuthenticated(true);
 			if (
 				!profile.completed_onboarding &&
-				location.pathname !== "/register"
+				location.pathname !== "/register" &&
+				!skipNav
 			)
 				navigate("/onboarding");
 		} catch (profileError) {
@@ -141,6 +144,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				if (session) await loadUserProfile(session.user.id);
 			} catch (error) {
 				console.error("Error getting initial session:", error);
+			} finally {
+				setInitializing(false);
 			}
 		};
 
@@ -167,8 +172,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			subscription = authListener.data.subscription;
 		} catch (error) {
 			console.error("Error setting up auth listener:", error);
-		} finally {
-			setInitializing(false);
 		}
 
 		// Cleanup subscription on unmount
@@ -266,7 +269,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
 	// Update user profile
 	const updateUserProfile = async (
-		userData: Partial<UserFormData>,
+		userData: DeepPartial<UserFormData>,
 	): Promise<{ success: boolean; message: string }> => {
 		try {
 			const now = new Date().toISOString();
@@ -332,7 +335,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				if (settingsError) throw settingsError;
 			}
 
-			await loadUserProfile(user.id);
+			await loadUserProfile(user.id, true);
 
 			return { success: true, message: "Profile updated successfully" };
 		} catch (error: any) {

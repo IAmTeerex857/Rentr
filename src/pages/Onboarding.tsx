@@ -6,40 +6,24 @@ import UserTypeStep from "../components/auth/register-steps/UserTypeStep";
 import ProfileInfoStep from "../components/auth/register-steps/ProfileInfoStep";
 import TermsStep from "../components/auth/register-steps/TermsStep";
 import SuccessStep from "../components/auth/register-steps/SuccessStep";
-import { RegisterFormData } from "../components/auth/register-steps/types";
+import { useForm } from "react-hook-form";
+import { UserFormData } from "../context/AuthContext";
 
-const Register = () => {
+const Onboarding = () => {
 	// State to track current step
 	const [currentStep, setCurrentStep] = useState(1);
 
-	// Form data state
-	const [formData, setFormData] = useState<RegisterFormData>({
-		userType: "" as any, // 'seeker' or 'provider'
-		providerType: "", // 'agent' or 'homeowner', only if userType is 'provider'
-		email: "",
-		password: "",
-		confirmPassword: "",
-		firstName: "",
-		lastName: "",
-		phone: "",
-		country: "",
-		city: "",
-		avatar: null,
-		agreeToTerms: false,
-	});
+	const form = useForm<UserFormData>();
 
-	// Update form data
-	const updateFormData = (data: Partial<typeof formData>) => {
-		setFormData((prev) => ({ ...prev, ...data }));
-	};
+	const formData = form.watch();
 
 	// Go to next step
-	const nextStep = () => {
-		setCurrentStep((prev) => Math.min(prev + 1, 5));
+	const nextStep = async () => {
+		setCurrentStep((prev) => Math.min(prev + 1, 4));
 	};
 
 	// Go to previous step
-	const prevStep = () => {
+	const prevStep = async () => {
 		setCurrentStep((prev) => Math.max(prev - 1, 1));
 	};
 
@@ -79,8 +63,7 @@ const Register = () => {
 			case 1:
 				return (
 					<UserTypeStep
-						formData={formData}
-						updateFormData={updateFormData}
+						form={form}
 						nextStep={nextStep}
 						prevStep={prevStep}
 					/>
@@ -88,8 +71,7 @@ const Register = () => {
 			case 2:
 				return (
 					<ProfileInfoStep
-						formData={formData}
-						updateFormData={updateFormData}
+						form={form}
 						nextStep={nextStep}
 						prevStep={prevStep}
 					/>
@@ -97,8 +79,7 @@ const Register = () => {
 			case 3:
 				return (
 					<TermsStep
-						formData={formData}
-						updateFormData={updateFormData}
+						form={form}
 						nextStep={nextStep}
 						prevStep={prevStep}
 					/>
@@ -142,4 +123,4 @@ const Register = () => {
 	);
 };
 
-export default Register;
+export default Onboarding;

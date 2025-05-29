@@ -12,76 +12,11 @@ import { CommonProps } from "./types";
 type ProfileInfoStepProps = CommonProps;
 
 const ProfileInfoStep: React.FC<ProfileInfoStepProps> = ({
-	formData,
-	updateFormData,
+	form,
 	nextStep,
 	prevStep,
 }) => {
-	const [errors, setErrors] = useState<{
-		firstName?: string;
-		lastName?: string;
-		phone?: string;
-		country?: string;
-		city?: string;
-	}>({});
-
 	const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-
-	const handleChange = (
-		e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
-	) => {
-		const { name, value } = e.target;
-		updateFormData({ [name]: value });
-
-		// Clear error when field is being edited
-		if (errors[name as keyof typeof errors]) {
-			setErrors((prev) => ({ ...prev, [name]: undefined }));
-		}
-	};
-
-	const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		if (e.target.files && e.target.files[0]) {
-			const file = e.target.files[0];
-			updateFormData({ avatar: file });
-
-			// Create preview URL
-			const reader = new FileReader();
-			reader.onloadend = () => {
-				setAvatarPreview(reader.result as string);
-			};
-			reader.readAsDataURL(file);
-		}
-	};
-
-	const handleContinue = () => {
-		const newErrors: typeof errors = {};
-
-		if (!formData.firstName.trim()) {
-			newErrors.firstName = "First name is required";
-		}
-
-		if (!formData.lastName.trim()) {
-			newErrors.lastName = "Last name is required";
-		}
-
-		if (!formData.phone.trim()) {
-			newErrors.phone = "Phone number is required";
-		}
-
-		if (!formData.country) {
-			newErrors.country = "Country is required";
-		}
-
-		if (!formData.city.trim()) {
-			newErrors.city = "City is required";
-		}
-
-		setErrors(newErrors);
-
-		if (Object.keys(newErrors).length === 0) {
-			nextStep();
-		}
-	};
 
 	// List of countries (simplified for demo)
 	const countries = [
@@ -94,7 +29,12 @@ const ProfileInfoStep: React.FC<ProfileInfoStepProps> = ({
 	];
 
 	return (
-		<div className="space-y-6">
+		<form
+			className="space-y-6"
+			onSubmit={form.handleSubmit(() => {
+				nextStep();
+			})}
+		>
 			<div>
 				<h3 className="text-lg font-medium text-gray-900 mb-2">
 					Profile Information
@@ -127,7 +67,21 @@ const ProfileInfoStep: React.FC<ProfileInfoStepProps> = ({
 								name="avatar"
 								type="file"
 								accept="image/*"
-								onChange={handleFileChange}
+								onChange={(e) => {
+									if (e.target.files && e.target.files[0]) {
+										const file = e.target.files[0];
+										form.setValue("avatar", file);
+
+										// Create preview URL
+										const reader = new FileReader();
+										reader.onloadend = () => {
+											setAvatarPreview(
+												reader.result as string,
+											);
+										};
+										reader.readAsDataURL(file);
+									}
+								}}
 								className="hidden"
 							/>
 						</label>
@@ -145,21 +99,20 @@ const ProfileInfoStep: React.FC<ProfileInfoStepProps> = ({
 								First Name
 							</label>
 							<input
-								id="firstName"
-								name="firstName"
 								type="text"
-								value={formData.firstName}
-								onChange={handleChange}
+								{...form.register("firstName", {
+									required: true,
+								})}
 								className={`block w-full shadow-sm rounded-md py-3 px-4 border ${
-									errors.firstName
+									form.formState.errors.firstName
 										? "border-red-300 focus:ring-red-500 focus:border-red-500"
 										: "border-gray-300 focus:ring-rose-500 focus:border-rose-500"
 								}`}
 								placeholder="John"
 							/>
-							{errors.firstName && (
+							{form.formState.errors.firstName && (
 								<p className="mt-1 text-sm text-red-600">
-									{errors.firstName}
+									{form.formState.errors.firstName.message}
 								</p>
 							)}
 						</div>
@@ -173,20 +126,20 @@ const ProfileInfoStep: React.FC<ProfileInfoStepProps> = ({
 							</label>
 							<input
 								id="lastName"
-								name="lastName"
 								type="text"
-								value={formData.lastName}
-								onChange={handleChange}
+								{...form.register("lastName", {
+									required: true,
+								})}
 								className={`block w-full shadow-sm rounded-md py-3 px-4 border ${
-									errors.lastName
+									form.formState.errors.lastName
 										? "border-red-300 focus:ring-red-500 focus:border-red-500"
 										: "border-gray-300 focus:ring-rose-500 focus:border-rose-500"
 								}`}
 								placeholder="Doe"
 							/>
-							{errors.lastName && (
+							{form.formState.errors.lastName && (
 								<p className="mt-1 text-sm text-red-600">
-									{errors.lastName}
+									{form.formState.errors.lastName.message}
 								</p>
 							)}
 						</div>
@@ -206,21 +159,19 @@ const ProfileInfoStep: React.FC<ProfileInfoStepProps> = ({
 							</div>
 							<input
 								id="phone"
-								name="phone"
 								type="tel"
-								value={formData.phone}
-								onChange={handleChange}
+								{...form.register("phone", { required: true })}
 								className={`pl-10 block w-full shadow-sm rounded-md py-3 px-4 border ${
-									errors.phone
+									form.formState.errors.phone
 										? "border-red-300 focus:ring-red-500 focus:border-red-500"
 										: "border-gray-300 focus:ring-rose-500 focus:border-rose-500"
 								}`}
 								placeholder="+1 (555) 123-4567"
 							/>
 						</div>
-						{errors.phone && (
+						{form.formState.errors.phone && (
 							<p className="mt-1 text-sm text-red-600">
-								{errors.phone}
+								{form.formState.errors.phone.message}
 							</p>
 						)}
 					</div>
@@ -235,11 +186,9 @@ const ProfileInfoStep: React.FC<ProfileInfoStepProps> = ({
 						</label>
 						<select
 							id="country"
-							name="country"
-							value={formData.country}
-							onChange={handleChange}
+							{...form.register("country", { required: true })}
 							className={`block w-full shadow-sm rounded-md py-3 px-4 border ${
-								errors.country
+								form.formState.errors.country
 									? "border-red-300 focus:ring-red-500 focus:border-red-500"
 									: "border-gray-300 focus:ring-rose-500 focus:border-rose-500"
 							}`}
@@ -251,9 +200,9 @@ const ProfileInfoStep: React.FC<ProfileInfoStepProps> = ({
 								</option>
 							))}
 						</select>
-						{errors.country && (
+						{form.formState.errors.country && (
 							<p className="mt-1 text-sm text-red-600">
-								{errors.country}
+								{form.formState.errors.country.message}
 							</p>
 						)}
 					</div>
@@ -271,21 +220,19 @@ const ProfileInfoStep: React.FC<ProfileInfoStepProps> = ({
 							</div>
 							<input
 								id="city"
-								name="city"
 								type="text"
-								value={formData.city}
-								onChange={handleChange}
+								{...form.register("city", { required: true })}
 								className={`pl-10 block w-full shadow-sm rounded-md py-3 px-4 border ${
-									errors.city
+									form.formState.errors.city
 										? "border-red-300 focus:ring-red-500 focus:border-red-500"
 										: "border-gray-300 focus:ring-rose-500 focus:border-rose-500"
 								}`}
 								placeholder="Enter your city"
 							/>
 						</div>
-						{errors.city && (
+						{form.formState.errors.city && (
 							<p className="mt-1 text-sm text-red-600">
-								{errors.city}
+								{form.formState.errors.city.message}
 							</p>
 						)}
 					</div>
@@ -302,14 +249,14 @@ const ProfileInfoStep: React.FC<ProfileInfoStepProps> = ({
 				</button>
 
 				<button
-					type="button"
-					onClick={handleContinue}
-					className="flex items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500"
+					disabled={!form.formState.isValid}
+					type="submit"
+					className="flex disabled:opacity-50 disabled:cursor-not-allowed items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500"
 				>
 					Continue <ArrowRight className="ml-2 h-4 w-4" />
 				</button>
 			</div>
-		</div>
+		</form>
 	);
 };
 

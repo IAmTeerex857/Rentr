@@ -1,32 +1,17 @@
-import React, { useState } from "react";
+import React from "react";
 import { ArrowLeft, CheckCircle, AlertCircle } from "lucide-react";
 import { CommonProps } from "./types";
 
 type TermsStepProps = CommonProps;
 
-const TermsStep: React.FC<TermsStepProps> = ({
-	formData,
-	updateFormData,
-	nextStep,
-	prevStep,
-}) => {
-	const [error, setError] = useState<string | null>(null);
-
-	const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		updateFormData({ agreeToTerms: e.target.checked });
-		if (error) setError(null);
-	};
-
-	const handleContinue = () => {
-		if (!formData.agreeToTerms) {
-			setError("You must agree to the terms and conditions to continue");
-			return;
-		}
-		nextStep();
-	};
-
+const TermsStep: React.FC<TermsStepProps> = ({ form, nextStep, prevStep }) => {
 	return (
-		<div className="space-y-6">
+		<form
+			className="space-y-6"
+			onSubmit={form.handleSubmit(() => {
+				nextStep();
+			})}
+		>
 			<div>
 				<h3 className="text-lg font-medium text-gray-900 mb-2">
 					Terms and Conditions
@@ -125,10 +110,13 @@ const TermsStep: React.FC<TermsStepProps> = ({
 					<div className="flex items-center h-5">
 						<input
 							id="terms"
-							name="terms"
 							type="checkbox"
-							checked={formData.agreeToTerms}
-							onChange={handleChange}
+							{...form.register("agreeToTerms", {
+								validate: (value: boolean) => {
+									if (!value)
+										return "You must agree to the terms and conditions to continue";
+								},
+							})}
 							className="h-4 w-4 text-rose-600 focus:ring-rose-500 border-gray-300 rounded"
 						/>
 					</div>
@@ -147,10 +135,10 @@ const TermsStep: React.FC<TermsStepProps> = ({
 					</div>
 				</div>
 
-				{error && (
+				{form.formState.errors.agreeToTerms && (
 					<div className="mt-2 flex items-center text-sm text-red-600">
 						<AlertCircle className="h-4 w-4 mr-1" />
-						{error}
+						{form.formState.errors.agreeToTerms}
 					</div>
 				)}
 			</div>
@@ -165,15 +153,15 @@ const TermsStep: React.FC<TermsStepProps> = ({
 				</button>
 
 				<button
-					type="button"
-					onClick={handleContinue}
-					className="flex items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500"
+					disabled={!form.formState.isValid}
+					type="submit"
+					className="flex disabled:opacity-50 disabled:cursor-not-allowed items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500"
 				>
 					Complete Registration{" "}
 					<CheckCircle className="ml-2 h-4 w-4" />
 				</button>
 			</div>
-		</div>
+		</form>
 	);
 };
 
