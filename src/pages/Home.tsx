@@ -1,33 +1,102 @@
 import { Search, MapPin, Star, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { fetchFeaturedProperties, Property } from '../supabase/propertiesService';
+
+interface Testimonial {
+  name: string;
+  text: string;
+}
 
 export default function Home() {
-  // Demo featured listings
-  const featuredListings = [
-    {
-      title: "Luxury Beachfront Villa",
-      location: "Kyrenia, North Cyprus",
-      image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80",
-      price: "$250/night",
-      rating: 4.9
-    },
-    {
-      title: "Modern City Apartment",
-      location: "Nicosia, North Cyprus",
-      image: "https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=800&q=80",
-      price: "$110/night",
-      rating: 4.7
-    },
-    {
-      title: "Cozy Mountain Cottage",
-      location: "Bellapais, North Cyprus",
-      image: "https://images.unsplash.com/photo-1512918728675-ed5a9ecdebfd?auto=format&fit=crop&w=800&q=80",
-      price: "$90/night",
-      rating: 4.8
-    }
-  ];
+  const [featuredListings, setFeaturedListings] = useState<Property[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Fetch featured listings from Supabase
+  useEffect(() => {
+    const loadFeaturedProperties = async () => {
+      try {
+        const properties = await fetchFeaturedProperties(3);
+        setFeaturedListings(properties);
+      } catch (err) {
+        console.error('Error loading featured properties:', err);
+        setError('Failed to load featured properties');
+        // Fallback to demo data if API fails
+        setFeaturedListings([
+          {
+            id: '1',
+            title: "Luxury Beachfront Villa",
+            location: "Kyrenia, North Cyprus",
+            images: ["https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80"],
+            price: 250,
+            currency: "USD",
+            purpose: "rent",
+            bedrooms: 4,
+            bathrooms: 3,
+            area: 350,
+            area_unit: "m²",
+            property_type: "villa",
+            amenities: ["Wi-Fi", "Pool", "Garden"],
+            owner_id: "1",
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            status: "active",
+            rating: 4.9,
+            review_count: 28
+          },
+          {
+            id: '2',
+            title: "Modern City Apartment",
+            location: "Nicosia, North Cyprus",
+            images: ["https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=800&q=80"],
+            price: 110,
+            currency: "USD",
+            purpose: "rent",
+            bedrooms: 2,
+            bathrooms: 1,
+            area: 85,
+            area_unit: "m²",
+            property_type: "apartment",
+            amenities: ["Wi-Fi", "Air Conditioning", "Elevator"],
+            owner_id: "2",
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            status: "active",
+            rating: 4.7,
+            review_count: 15
+          },
+          {
+            id: '3',
+            title: "Cozy Mountain Cottage",
+            location: "Bellapais, North Cyprus",
+            images: ["https://images.unsplash.com/photo-1512918728675-ed5a9ecdebfd?auto=format&fit=crop&w=800&q=80"],
+            price: 90,
+            currency: "USD",
+            purpose: "rent",
+            bedrooms: 3,
+            bathrooms: 2,
+            area: 120,
+            area_unit: "m²",
+            property_type: "cottage",
+            amenities: ["Wi-Fi", "Fireplace", "Mountain View"],
+            owner_id: "3",
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            status: "active",
+            rating: 4.8,
+            review_count: 20
+          }
+        ] as Property[]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadFeaturedProperties();
+  }, []);
 
-  const testimonials = [
+  const testimonials: Testimonial[] = [
     {
       name: "Sara B.",
       text: "Found the perfect villa for our family vacation. The booking process was seamless and the property was exactly as described!"
@@ -206,43 +275,18 @@ export default function Home() {
           <p className="text-gray-600">Find a better price elsewhere? We'll match it and offer exclusive deals.</p>
         </div>
       </section>
-
-      {/* Featured Listings */}
-      <section className="max-w-7xl mx-auto px-4 py-8">
-        <h2 className="text-3xl font-extrabold text-gray-900 text-center mb-8">Featured Properties</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
-          {featuredListings.map((listing, idx) => (
-            <div key={idx} className="bg-white rounded-2xl shadow-lg overflow-hidden hover:scale-105 transition-transform">
-              <img src={listing.image} alt={listing.title} className="w-full h-56 object-cover" />
-              <div className="p-5">
-                <h3 className="text-xl font-bold text-gray-900 mb-1">{listing.title}</h3>
-                <div className="text-gray-500 text-sm mb-2">{listing.location}</div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-airbnb-red font-bold">{listing.price}</span>
-                  <span className="flex items-center text-yellow-500 font-semibold"><Star className="h-4 w-4 mr-1" />{listing.rating}</span>
-                </div>
-                <Link to={`/properties/${idx + 1}`}>
-                  <button className="w-full bg-rose-500 text-white rounded-lg py-2 mt-3 font-semibold hover:bg-rose-600">View Details</button>
-                </Link>
-              </div>
+      
+      {/* Testimonials */}
+      <section className="max-w-6xl mx-auto px-4 py-12">
+        <h2 className="text-3xl font-bold text-center mb-8">What Our Users Say</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {testimonials.map((t, idx) => (
+            <div key={idx} className="bg-white rounded-xl shadow p-6 flex flex-col items-center text-center">
+              <Star className="h-8 w-8 text-airbnb-red mb-2" />
+              <p className="text-gray-700 italic mb-4">"{t.text}"</p>
+              <span className="font-bold text-airbnb-red">{t.name}</span>
             </div>
           ))}
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="bg-gradient-to-r from-rose-50 to-blue-50 py-12">
-        <div className="max-w-4xl mx-auto px-4">
-          <h2 className="text-2xl font-bold text-center text-gray-900 mb-8">What Our Users Say</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {testimonials.map((t, idx) => (
-              <div key={idx} className="bg-white rounded-xl shadow p-6 flex flex-col items-center text-center">
-                <Star className="h-8 w-8 text-airbnb-red mb-2" />
-                <p className="text-gray-700 italic mb-4">"{t.text}"</p>
-                <span className="font-bold text-airbnb-red">{t.name}</span>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 

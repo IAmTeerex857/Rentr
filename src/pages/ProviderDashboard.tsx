@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Home, Calendar, MessageSquare, Settings, 
@@ -9,99 +9,41 @@ import {
 // Dashboard components
 import PropertyListingCard from '../components/dashboard/PropertyListingCard';
 import DashboardStats from '../components/dashboard/DashboardStats';
+import BookingManagement from '../components/dashboard/BookingManagement';
+import MessageCenter from '../components/dashboard/MessageCenter';
+
+// Supabase client
+import { supabase } from '../supabase/client';
+import { useAuth } from '../context/AuthContext';
 
 const ProviderDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [properties, setProperties] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
   
-  // Mock data for properties
-  const properties = [
-    {
-      id: 1,
-      title: 'Luxury Beachfront Villa',
-      location: 'Kyrenia, North Cyprus',
-      price: 250000,
-      type: 'Villa',
-      bedrooms: 4,
-      bathrooms: 3,
-      size: 220,
-      status: 'active',
-      purpose: 'sale',
-      image: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80',
-      views: 245,
-      inquiries: 12,
-      lastUpdated: '2023-11-15'
-    },
-    {
-      id: 2,
-      title: 'Modern Apartment with Sea View',
-      location: 'Famagusta, North Cyprus',
-      price: 120000,
-      type: 'Apartment',
-      bedrooms: 2,
-      bathrooms: 1,
-      size: 95,
-      status: 'active',
-      purpose: 'sale',
-      image: 'https://images.unsplash.com/photo-1493809842364-78817add7ffb?auto=format&fit=crop&w=800&q=80',
-      views: 187,
-      inquiries: 8,
-      lastUpdated: '2023-11-10'
-    },
-    {
-      id: 3,
-      title: 'Cozy Studio for Rent',
-      location: 'Nicosia, North Cyprus',
-      price: 600,
-      type: 'Studio',
-      bedrooms: 1,
-      bathrooms: 1,
-      size: 45,
-      status: 'active',
-      purpose: 'rent',
-      image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80',
-      views: 120,
-      inquiries: 5,
-      lastUpdated: '2023-11-05'
-    },
-    {
-      id: 4,
-      title: 'Spacious Family House',
-      location: 'Bellapais, North Cyprus',
-      price: 320000,
-      type: 'House',
-      bedrooms: 5,
-      bathrooms: 3,
-      size: 280,
-      status: 'pending',
-      purpose: 'sale',
-      image: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=800&q=80',
-      views: 78,
-      inquiries: 3,
-      lastUpdated: '2023-11-01'
-    }
-  ];
-  
-  // Mock data for stats
+  // Stats derived from real data
   const stats = {
-    totalListings: 4,
-    activeListings: 3,
-    pendingListings: 1,
-    totalViews: 630,
-    totalInquiries: 28,
-    revenueGenerated: 1200
+    totalListings: properties.length,
+    activeListings: properties.filter(p => p.status === 'active').length,
+    pendingListings: properties.filter(p => p.status === 'pending').length,
+    totalViews: properties.reduce((sum, p) => sum + (p.views || 0), 0),
+    totalInquiries: properties.reduce((sum, p) => sum + (p.inquiries || 0), 0),
+    revenueGenerated: 1200 // This would need to come from a real revenue tracking system
   };
   
-  // Mock data for recent inquiries
+  // Mock data for recent inquiries (would be replaced with real data in a full implementation)
   const recentInquiries = [
     {
       id: 1,
       name: 'John Smith',
       email: 'john.smith@example.com',
       phone: '+1 234 567 8901',
-      message: 'I am interested in the Luxury Beachfront Villa. Is it still available for viewing this weekend?',
-      propertyId: 1,
-      propertyTitle: 'Luxury Beachfront Villa',
+      message: 'I am interested in viewing this property. Is it still available for viewing this weekend?',
+      propertyId: properties[0]?.id || '',
+      propertyTitle: properties[0]?.title || 'Property',
       date: '2023-11-15'
     },
     {
@@ -109,9 +51,9 @@ const ProviderDashboard = () => {
       name: 'Sarah Johnson',
       email: 'sarah.j@example.com',
       phone: '+1 987 654 3210',
-      message: 'Hello, I would like to know if the price for the Modern Apartment is negotiable. Thanks!',
-      propertyId: 2,
-      propertyTitle: 'Modern Apartment with Sea View',
+      message: 'Hello, I would like to know if the price is negotiable. Thanks!',
+      propertyId: properties[1]?.id || '',
+      propertyTitle: properties[1]?.title || 'Property',
       date: '2023-11-14'
     },
     {
@@ -119,17 +61,78 @@ const ProviderDashboard = () => {
       name: 'Michael Brown',
       email: 'michael.b@example.com',
       phone: '+1 567 890 1234',
-      message: 'I am looking for a long-term rental. Is the studio available for a 12-month lease?',
-      propertyId: 3,
-      propertyTitle: 'Cozy Studio for Rent',
+      message: 'I am looking for a long-term rental. Is this property available for a 12-month lease?',
+      propertyId: properties[2]?.id || '',
+      propertyTitle: properties[2]?.title || 'Property',
       date: '2023-11-12'
     }
   ];
   
+  // Fetch properties from Supabase
+  useEffect(() => {
+    const fetchProperties = async () => {
+      try {
+        setLoading(true);
+        
+        if (!user?.id) {
+          setError('User not authenticated');
+          setLoading(false);
+          return;
+        }
+        
+        const { data, error } = await supabase
+          .from('properties')
+          .select('*')
+          .eq('owner_id', user.id);
+          
+        if (error) throw error;
+        
+        // Transform the data to match the expected format for the UI
+        const transformedData = data.map(property => ({
+          id: property.id,
+          title: property.title,
+          location: property.location,
+          price: property.price,
+          type: property.property_type,
+          bedrooms: property.bedrooms,
+          bathrooms: property.bathrooms,
+          size: property.area,
+          status: property.status,
+          purpose: property.purpose,
+          image: property.images && property.images.length > 0 ? property.images[0] : 'https://via.placeholder.com/800x600?text=No+Image',
+          views: 0, // These would come from analytics in a real app
+          inquiries: 0, // These would come from a real inquiries system
+          lastUpdated: new Date(property.updated_at).toLocaleDateString()
+        }));
+        
+        setProperties(transformedData);
+      } catch (err: any) {
+        setError(err.message || 'Failed to fetch properties');
+        console.error('Error fetching properties:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchProperties();
+  }, [user?.id]);
+  
   // Handler for property deletion
-  const handleDeleteProperty = (id: number) => {
-    console.log(`Delete property with ID: ${id}`);
-    // In a real app, this would call an API to delete the property
+  const handleDeleteProperty = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('properties')
+        .delete()
+        .eq('id', id);
+        
+      if (error) throw error;
+      
+      // Update the UI by removing the deleted property
+      setProperties(properties.filter(p => p.id !== id));
+    } catch (err: any) {
+      console.error('Error deleting property:', err);
+      alert('Failed to delete property: ' + err.message);
+    }
   };
   
   return (
@@ -192,18 +195,6 @@ const ProviderDashboard = () => {
             >
               <Home className="h-5 w-5 mr-3" />
               My Properties
-            </button>
-            
-            <button
-              onClick={() => setActiveTab('inquiries')}
-              className={`flex items-center w-full px-4 py-3 rounded-lg text-left ${
-                activeTab === 'inquiries'
-                  ? 'bg-rose-50 text-rose-600'
-                  : 'text-gray-700 hover:bg-gray-100'
-              }`}
-            >
-              <MessageSquare className="h-5 w-5 mr-3" />
-              Inquiries
             </button>
             
             <button
@@ -432,20 +423,60 @@ const ProviderDashboard = () => {
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {properties.map((property) => (
-                  <PropertyListingCard 
-                    key={property.id} 
-                    property={property} 
-                    onDelete={handleDeleteProperty} 
-                  />
-                ))}
+              {loading ? (
+                <div className="flex justify-center items-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-rose-500"></div>
+                </div>
+              ) : error ? (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative">
+                  {error}
+                </div>
+              ) : properties.length === 0 ? (
+                <div className="text-center py-12">
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No properties found</h3>
+                  <p className="text-gray-500 mb-6">You haven't listed any properties yet.</p>
+                  <Link
+                    to="/list-property"
+                    className="inline-flex items-center px-4 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700"
+                  >
+                    <PlusCircle className="h-5 w-5 mr-2" />
+                    Add Your First Property
+                  </Link>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {properties.map((property) => (
+                    <PropertyListingCard 
+                      key={property.id} 
+                      property={property} 
+                      onDelete={handleDeleteProperty} 
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          
+          {activeTab === 'bookings' && (
+            <div>
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+                <h1 className="text-2xl font-bold text-gray-900">Booking Management</h1>
               </div>
+              <BookingManagement />
+            </div>
+          )}
+          
+          {activeTab === 'messages' && (
+            <div>
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+                <h1 className="text-2xl font-bold text-gray-900">Message Center</h1>
+              </div>
+              <MessageCenter />
             </div>
           )}
           
           {/* Other tabs would be implemented similarly */}
-          {activeTab !== 'overview' && activeTab !== 'properties' && (
+          {activeTab !== 'overview' && activeTab !== 'properties' && activeTab !== 'bookings' && activeTab !== 'messages' && (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
                 <h2 className="text-xl font-bold text-gray-700 mb-2">

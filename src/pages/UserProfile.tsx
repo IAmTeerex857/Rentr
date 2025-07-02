@@ -11,9 +11,12 @@ import {
 	Bell,
 	Lock,
 	LogOut,
+	Star,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { DeepPartial, useForm } from "react-hook-form";
+import HostReviews from "../components/reviews/HostReviews";
+import GuestReviews from "../components/reviews/GuestReviews";
 
 const UserProfile = () => {
 	const { user, logout, updateUserProfile } = useAuth();
@@ -113,6 +116,18 @@ const UserProfile = () => {
 							>
 								<Home className="h-5 w-5 mr-3" />
 								Preferences
+							</button>
+
+							<button
+								onClick={() => setActiveTab("reviews")}
+								className={`flex items-center w-full px-4 py-3 rounded-lg text-left ${
+									activeTab === "reviews"
+										? "bg-red-50 text-airbnb-red"
+										: "text-gray-700 hover:bg-gray-100"
+								}`}
+							>
+								<Star className="h-5 w-5 mr-3" />
+								Reviews
 							</button>
 
 							<button
@@ -704,6 +719,23 @@ const UserProfile = () => {
 											Save Preferences
 										</button>
 									</form>
+								</div>
+							</div>
+						)}
+
+						{/* Reviews Tab */}
+						{activeTab === "reviews" && (
+							<div className="space-y-6">
+								<div>
+									<h3 className="text-lg font-medium text-gray-900 mb-4">
+										{user.userType === "provider" ? "Your Host Reviews" : "Your Guest Reviews"}
+									</h3>
+									
+									{user.userType === "provider" ? (
+										<HostReviews hostId={user.id} />
+									) : (
+										<GuestReviews guestId={user.id} />
+									)}
 								</div>
 							</div>
 						)}

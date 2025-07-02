@@ -6,7 +6,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export type Database = {
+export interface Database {
   public: {
     Tables: {
       profile_settings: {
@@ -95,20 +95,465 @@ export type Database = {
           user_type?: string
         }
         Relationships: []
-      }
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      [_ in never]: never
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
+      },
+      properties: {
+        Row: {
+          id: string
+          title: string
+          description: string
+          location: string
+          price: number
+          currency: string
+          purpose: 'rent' | 'sale'
+          bedrooms: number
+          bathrooms: number
+          area: number
+          area_unit: string
+          property_type: string
+          amenities: string[]
+          images: string[]
+          owner_id: string
+          created_at: string
+          updated_at: string
+          latitude: number | null
+          longitude: number | null
+          is_featured: boolean | null
+          status: 'active' | 'pending' | 'sold' | 'rented'
+        }
+        Insert: {
+          id?: string
+          title: string
+          description: string
+          location: string
+          price: number
+          currency?: string
+          purpose: 'rent' | 'sale'
+          bedrooms: number
+          bathrooms: number
+          area: number
+          area_unit?: string
+          property_type: string
+          amenities?: string[]
+          images?: string[]
+          owner_id: string
+          created_at?: string
+          updated_at?: string
+          latitude?: number | null
+          longitude?: number | null
+          is_featured?: boolean | null
+          status?: 'active' | 'pending' | 'sold' | 'rented'
+        }
+        Update: {
+          id?: string
+          title?: string
+          description?: string
+          location?: string
+          price?: number
+          currency?: string
+          purpose?: 'rent' | 'sale'
+          bedrooms?: number
+          bathrooms?: number
+          area?: number
+          area_unit?: string
+          property_type?: string
+          amenities?: string[]
+          images?: string[]
+          owner_id?: string
+          created_at?: string
+          updated_at?: string
+          latitude?: number | null
+          longitude?: number | null
+          is_featured?: boolean | null
+          status?: 'active' | 'pending' | 'sold' | 'rented'
+        }
+        Relationships: [
+          {
+            foreignKeyName: "properties_owner_id_fkey"
+            columns: ["owner_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      },
+      bookings: {
+        Row: {
+          id: string
+          property_id: string
+          user_id: string
+          start_date: string
+          end_date: string
+          status: 'pending' | 'confirmed' | 'cancelled' | 'completed'
+          total_price: number
+          created_at: string
+          updated_at: string
+          guests: number
+          special_requests?: string
+        }
+        Insert: {
+          id?: string
+          property_id: string
+          user_id: string
+          start_date: string
+          end_date: string
+          status?: 'pending' | 'confirmed' | 'cancelled' | 'completed'
+          total_price: number
+          created_at?: string
+          updated_at?: string
+          guests: number
+          special_requests?: string
+        }
+        Update: {
+          id?: string
+          property_id?: string
+          user_id?: string
+          start_date?: string
+          end_date?: string
+          status?: 'pending' | 'confirmed' | 'cancelled' | 'completed'
+          total_price?: number
+          created_at?: string
+          updated_at?: string
+          guests?: number
+          special_requests?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_property_id_fkey"
+            columns: ["property_id"]
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      },
+      conversations: {
+        Row: {
+          id: string
+          created_at: string
+          updated_at: string
+          property_id?: string
+          participants: string[]
+          last_message?: string
+          last_message_time?: string
+          unread_count: number
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          updated_at?: string
+          property_id?: string
+          participants: string[]
+          last_message?: string
+          last_message_time?: string
+          unread_count?: number
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          updated_at?: string
+          property_id?: string
+          participants?: string[]
+          last_message?: string
+          last_message_time?: string
+          unread_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversations_property_id_fkey"
+            columns: ["property_id"]
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          }
+        ]
+      },
+      conversation_participants: {
+        Row: {
+          id: string
+          conversation_id: string
+          user_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          conversation_id: string
+          user_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          conversation_id?: string
+          user_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_participants_conversation_id_fkey"
+            columns: ["conversation_id"]
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_participants_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      },
+      messages: {
+        Row: {
+          id: string
+          conversation_id: string
+          sender_id: string
+          recipient_id: string
+          content: string
+          created_at: string
+          read: boolean
+        }
+        Insert: {
+          id?: string
+          conversation_id: string
+          sender_id: string
+          recipient_id: string
+          content: string
+          created_at?: string
+          read?: boolean
+        }
+        Update: {
+          id?: string
+          conversation_id?: string
+          sender_id?: string
+          recipient_id?: string
+          content?: string
+          created_at?: string
+          read?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey"
+            columns: ["sender_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_recipient_id_fkey"
+            columns: ["recipient_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      },
+      property_reviews: {
+        Row: {
+          id: string
+          property_id: string
+          reviewer_id: string
+          booking_id: string | null
+          rating: number
+          cleanliness_rating: number | null
+          location_rating: number | null
+          value_rating: number | null
+          communication_rating: number | null
+          comment: string | null
+          response: string | null
+          response_date: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          property_id: string
+          reviewer_id: string
+          booking_id?: string | null
+          rating: number
+          cleanliness_rating?: number | null
+          location_rating?: number | null
+          value_rating?: number | null
+          communication_rating?: number | null
+          comment?: string | null
+          response?: string | null
+          response_date?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          property_id?: string
+          reviewer_id?: string
+          booking_id?: string | null
+          rating?: number
+          cleanliness_rating?: number | null
+          location_rating?: number | null
+          value_rating?: number | null
+          communication_rating?: number | null
+          comment?: string | null
+          response?: string | null
+          response_date?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_reviews_property_id_fkey"
+            columns: ["property_id"]
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_reviews_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          }
+        ]
+      },
+      host_reviews: {
+        Row: {
+          id: string
+          host_id: string
+          reviewer_id: string
+          booking_id: string | null
+          rating: number
+          communication_rating: number | null
+          hospitality_rating: number | null
+          comment: string | null
+          response: string | null
+          response_date: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          host_id: string
+          reviewer_id: string
+          booking_id?: string | null
+          rating: number
+          communication_rating?: number | null
+          hospitality_rating?: number | null
+          comment?: string | null
+          response?: string | null
+          response_date?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          host_id?: string
+          reviewer_id?: string
+          booking_id?: string | null
+          rating?: number
+          communication_rating?: number | null
+          hospitality_rating?: number | null
+          comment?: string | null
+          response?: string | null
+          response_date?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "host_reviews_host_id_fkey"
+            columns: ["host_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "host_reviews_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "host_reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          }
+        ]
+      },
+      guest_reviews: {
+        Row: {
+          id: string
+          guest_id: string
+          reviewer_id: string
+          booking_id: string | null
+          rating: number
+          cleanliness_rating: number | null
+          communication_rating: number | null
+          rule_following_rating: number | null
+          comment: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          guest_id: string
+          reviewer_id: string
+          booking_id?: string | null
+          rating: number
+          cleanliness_rating?: number | null
+          communication_rating?: number | null
+          rule_following_rating?: number | null
+          comment?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          guest_id?: string
+          reviewer_id?: string
+          booking_id?: string | null
+          rating?: number
+          cleanliness_rating?: number | null
+          communication_rating?: number | null
+          rule_following_rating?: number | null
+          comment?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guest_reviews_guest_id_fkey"
+            columns: ["guest_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guest_reviews_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guest_reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          }
+        ]
+      },
+      // Removed mapped type that was causing errors
+    },
+    Views: Record<string, never>
+    Functions: Record<string, never>
+    Enums: Record<string, never>
+    CompositeTypes: Record<string, never>
   }
 }
 

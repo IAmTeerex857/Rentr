@@ -1,98 +1,132 @@
-import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
   MapPin, Star, Heart, Share2, ArrowLeft, Check, 
   Phone, Mail, Calendar, ChevronLeft, ChevronRight,
   Bed, Bath, Maximize, Car, Wifi, Tv, Coffee, 
-  UtensilsCrossed, Wind, Users
+  UtensilsCrossed, Wind, Users, Loader2
 } from 'lucide-react';
+import { fetchPropertyById, Property } from '../supabase/propertiesService';
+import PropertyReviews from '../components/reviews/PropertyReviews';
 
-// Mock property data
-const propertyData = {
-  id: 1,
-  title: "Luxury Beachfront Villa",
-  description: "Experience the ultimate Mediterranean lifestyle in this stunning beachfront villa with panoramic sea views. This exclusive property offers spacious living areas, a private pool, and direct beach access. Perfect for families or as a holiday investment.",
-  location: "Kyrenia, North Cyprus",
-  images: [
-    "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1200&q=80"
-  ],
-  price: "$250/night",
-  priceValue: 250,
-  rating: 4.9,
-  reviews: 28,
-  type: "villa",
-  purpose: "rent",
-  bedrooms: 4,
-  bathrooms: 3,
-  size: "350 m²",
-  garage: 2,
-  yearBuilt: 2020,
-  features: [
-    "Sea View", 
-    "Private Pool", 
-    "Garden", 
-    "Air Conditioning", 
-    "Parking", 
-    "Balcony", 
-    "Fully Furnished", 
-    "Security System",
-    "BBQ Area",
-    "Outdoor Dining",
-    "Beach Access"
-  ],
-  amenities: [
-    "Wi-Fi",
-    "TV",
-    "Kitchen",
-    "Washing Machine",
-    "Dishwasher",
-    "Coffee Machine",
-    "Microwave",
-    "Iron",
-    "Hair Dryer"
-  ],
-  address: "123 Coastal Road, Kyrenia, North Cyprus",
-  coordinates: { lat: 35.341, lng: 33.319 },
-  agent: {
-    name: "Maria Christou",
-    phone: "+90 533 123 4567",
-    email: "maria@cyprusstays.com",
-    image: "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&w=200&q=80",
-    agency: "North Cyprus Luxury Properties"
-  },
-  availability: {
-    available: true,
-    availableDates: [
-      { start: "2025-05-01", end: "2025-05-15" },
-      { start: "2025-06-01", end: "2025-06-30" },
-      { start: "2025-08-15", end: "2025-09-15" }
-    ]
-  }
+// Define interfaces for additional property data not in the database schema
+interface PropertyAgent {
+  name: string;
+  phone: string;
+  email: string;
+  image: string;
+  agency: string;
+}
+
+interface AvailabilityDate {
+  start: string;
+  end: string;
+}
+
+interface PropertyAvailability {
+  available: boolean;
+  availableDates: AvailabilityDate[];
+}
+
+interface PropertyExtras {
+  agent: PropertyAgent;
+  availability: PropertyAvailability;
+  address: string;
+  features: string[];
+  garage: number;
+  yearBuilt: number;
+}
+// Fallback data for when API fails
+const fallbackAvailability: PropertyAvailability = {
+  available: true,
+  availableDates: [
+    { start: "2025-05-01", end: "2025-05-15" },
+    { start: "2025-06-01", end: "2025-06-30" },
+    { start: "2025-08-15", end: "2025-09-15" }
+  ]
+};
+
+// Fallback agent data
+const fallbackAgent: PropertyAgent = {
+  name: "Maria Christou",
+  phone: "+90 533 123 4567",
+  email: "maria@cyprusstays.com",
+  image: "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&w=200&q=80",
+  agency: "North Cyprus Luxury Properties"
 };
 
 const PropertyDetails = () => {
   const { id } = useParams<{ id: string }>();
-  console.log(`Loading property details for ID: ${id}`); // In a real app, this would fetch data based on ID
+  const navigate = useNavigate();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
   const [showContactForm, setShowContactForm] = useState(false);
+  const [property, setProperty] = useState<Property | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
-  // In a real app, you would fetch the property data based on the ID
-  // For now, we'll just use our mock data
-  const property = propertyData;
+  // Additional property information not in the database schema
+  const [propertyExtras, setPropertyExtras] = useState<PropertyExtras>({
+    agent: fallbackAgent,
+    availability: fallbackAvailability,
+    address: "",
+    features: [],
+    garage: 0,
+    yearBuilt: 0
+  });
+  
+  useEffect(() => {
+    const loadPropertyDetails = async () => {
+      if (!id) {
+        setError("Property ID is missing");
+        setLoading(false);
+        return;
+      }
+      
+      try {
+        setLoading(true);
+        const propertyData = await fetchPropertyById(id);
+        setProperty(propertyData);
+        
+        // Extract features from amenities or set defaults
+        // In a real app, you might have a separate features field in the database
+        const features = propertyData.amenities.filter(item => 
+          ["Sea View", "Private Pool", "Garden", "Air Conditioning", "Parking", 
+           "Balcony", "Fully Furnished", "Security System", "BBQ Area", 
+           "Outdoor Dining", "Beach Access"].includes(item)
+        );
+        
+        // Set property extras with some default values where needed
+        setPropertyExtras({
+          agent: fallbackAgent, // In a real app, you would fetch the agent data
+          availability: fallbackAvailability, // In a real app, you would fetch availability
+          address: propertyData.location, // Using location as address for now
+          features,
+          garage: 1, // Default value
+          yearBuilt: new Date().getFullYear() - 2 // Default to 2 years old
+        });
+        
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching property details:", err);
+        setError("Failed to load property details. Please try again later.");
+        setLoading(false);
+      }
+    };
+    
+    loadPropertyDetails();
+  }, [id]);
   
   const nextImage = () => {
-    setCurrentImageIndex((prev) => 
+    if (!property?.images) return;
+    setCurrentImageIndex((prev: number) => 
       prev === property.images.length - 1 ? 0 : prev + 1
     );
   };
   
   const prevImage = () => {
-    setCurrentImageIndex((prev) => 
+    if (!property?.images) return;
+    setCurrentImageIndex((prev: number) => 
       prev === 0 ? property.images.length - 1 : prev - 1
     );
   };
@@ -110,6 +144,36 @@ const PropertyDetails = () => {
     alert('Share functionality would be implemented here');
   };
 
+  // Handle loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 pt-20 pb-12 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-rose-600 mx-auto" />
+          <p className="mt-2 text-gray-600">Loading property details...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Handle error state
+  if (error || !property) {
+    return (
+      <div className="min-h-screen bg-gray-50 pt-20 pb-12 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6 bg-white rounded-xl shadow-md">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Oops! Something went wrong</h2>
+          <p className="text-gray-600 mb-6">{error || "Property not found"}</p>
+          <button 
+            onClick={() => navigate(-1)} 
+            className="px-4 py-2 bg-rose-600 text-white rounded-md hover:bg-rose-700 transition-colors"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+  
   return (
     <div className="min-h-screen bg-gray-50 pt-20 pb-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -137,10 +201,12 @@ const PropertyDetails = () => {
         
         {/* Property Images */}
         <div className="relative mb-8 rounded-xl overflow-hidden shadow-lg">
-          <div className="relative h-[500px] bg-gray-200">
+          <div className="w-full h-[500px] overflow-hidden rounded-xl relative">
             <img 
-              src={property.images[currentImageIndex]} 
-              alt={`${property.title} - Image ${currentImageIndex + 1}`}
+              src={property.images && property.images.length > 0 
+                ? property.images[currentImageIndex] 
+                : 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1200&q=80'} 
+              alt={`Property image ${currentImageIndex + 1}`}
               className="w-full h-full object-cover"
             />
             
@@ -170,8 +236,8 @@ const PropertyDetails = () => {
           </div>
           
           {/* Thumbnail navigation */}
-          <div className="flex overflow-x-auto py-2 px-1 bg-white">
-            {property.images.map((image, index) => (
+          <div className="flex mt-4 space-x-2 overflow-x-auto pb-2">
+            {property.images && property.images.map((image, index) => (
               <div 
                 key={index}
                 className={`flex-shrink-0 w-20 h-20 mx-1 rounded-md overflow-hidden cursor-pointer border-2 ${
@@ -206,8 +272,8 @@ const PropertyDetails = () => {
                 <div className="flex items-center mt-2 md:mt-0">
                   <div className="flex items-center bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full">
                     <Star className="h-4 w-4 fill-current mr-1" />
-                    <span className="font-medium">{property.rating}</span>
-                    <span className="text-gray-600 ml-1">({property.reviews} reviews)</span>
+                    <span className="font-bold text-gray-900">{property.rating || 4.5}</span>
+                    <span className="text-gray-600">({property.review_count || 0} reviews)</span>
                   </div>
                 </div>
               </div>
@@ -231,14 +297,14 @@ const PropertyDetails = () => {
                 <div className="flex flex-col items-center">
                   <div className="flex items-center text-gray-500 mb-1">
                     <Maximize className="h-5 w-5 mr-1" />
-                    <span className="font-medium">{property.size}</span>
+                    <span className="text-gray-900">{property.area} {property.area_unit || 'm²'}</span>
                   </div>
                   <span className="text-xs text-gray-500">Area</span>
                 </div>
                 <div className="flex flex-col items-center">
                   <div className="flex items-center text-gray-500 mb-1">
                     <Car className="h-5 w-5 mr-1" />
-                    <span className="font-medium">{property.garage}</span>
+                    <span className="text-gray-900">{propertyExtras.garage}</span>
                   </div>
                   <span className="text-xs text-gray-500">Garage</span>
                 </div>
@@ -246,7 +312,7 @@ const PropertyDetails = () => {
               
               {/* Price */}
               <div className="mt-4">
-                <div className="text-2xl font-bold text-rose-600">{property.price}</div>
+                <span className="text-2xl font-bold text-gray-900">{property.currency} {property.price}{property.purpose === 'rent' ? '/night' : ''}</span>
                 {property.purpose === 'rent' && (
                   <span className="text-gray-500 text-sm">per night</span>
                 )}
@@ -257,25 +323,23 @@ const PropertyDetails = () => {
             <div className="bg-white rounded-xl shadow-md p-6 mb-6">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Description</h2>
               <p className="text-gray-700 leading-relaxed mb-4">{property.description}</p>
-              <p className="text-gray-700 leading-relaxed">
-                This property was built in {property.yearBuilt} and offers a perfect blend of modern amenities and traditional Mediterranean architecture. The villa is situated in a prime location with easy access to local attractions, restaurants, and beaches.
-              </p>
+              <p className="text-gray-700 leading-relaxed">This property was built in {propertyExtras.yearBuilt} and offers a perfect blend of modern amenities and traditional Mediterranean architecture. The villa is situated in a prime location with easy access to local attractions, restaurants, and beaches.</p>
             </div>
             
             {/* Features and Amenities */}
             <div className="bg-white rounded-xl shadow-md p-6 mb-6">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Features & Amenities</h2>
-              
+
               <h3 className="font-medium text-gray-900 mb-2">Property Features</h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-y-3 mb-6">
-                {property.features.map((feature, index) => (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-6">
+                {property.amenities && property.amenities.map((amenity, index) => (
                   <div key={index} className="flex items-center">
                     <Check className="h-5 w-5 text-green-500 mr-2" />
-                    <span className="text-gray-700">{feature}</span>
+                    <span className="text-gray-600">{amenity}</span>
                   </div>
                 ))}
               </div>
-              
+
               <h3 className="font-medium text-gray-900 mb-2">Amenities</h3>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-y-3">
                 <div className="flex items-center">
@@ -304,12 +368,12 @@ const PropertyDetails = () => {
                 </div>
               </div>
             </div>
-            
+
             {/* Location */}
             <div className="bg-white rounded-xl shadow-md p-6 mb-6">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Location</h2>
-              <p className="text-gray-700 mb-4">{property.address}</p>
-              
+              <p className="text-gray-700">{propertyExtras.address}</p>
+
               {/* Map placeholder - in a real app, this would be an actual map */}
               <div className="bg-gray-100 rounded-lg h-64 flex items-center justify-center">
                 <div className="text-center">
@@ -320,42 +384,36 @@ const PropertyDetails = () => {
               </div>
             </div>
           </div>
-          
+
           {/* Sidebar */}
           <div className="lg:col-span-1">
             {/* Contact Agent */}
             <div className="bg-white rounded-xl shadow-md p-6 mb-6">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Contact Agent</h2>
-              
+
               <div className="flex items-center mb-4">
-                <img 
-                  src={property.agent.image} 
-                  alt={property.agent.name}
+                <img
+                  src={propertyExtras.agent.image}
+                  alt={propertyExtras.agent.name}
                   className="w-16 h-16 rounded-full object-cover mr-4"
                 />
                 <div>
-                  <h3 className="font-medium text-gray-900">{property.agent.name}</h3>
-                  <p className="text-gray-500 text-sm">{property.agent.agency}</p>
+                  <h3 className="text-xl font-bold text-gray-900">{propertyExtras.agent.name}</h3>
+                  <p className="text-gray-600">{propertyExtras.agent.agency}</p>
                 </div>
               </div>
-              
-              <div className="space-y-3 mb-6">
-                <a 
-                  href={`tel:${property.agent.phone}`}
-                  className="flex items-center text-gray-700 hover:text-gray-900"
-                >
-                  <Phone className="h-5 w-5 text-gray-500 mr-2" />
-                  {property.agent.phone}
+
+              <div className="flex flex-col space-y-3 mb-4">
+                <a href={`tel:${propertyExtras.agent.phone}`} className="flex items-center text-gray-800 hover:text-rose-600">
+                  <Phone className="h-5 w-5 mr-2" />
+                  {propertyExtras.agent.phone}
                 </a>
-                <a 
-                  href={`mailto:${property.agent.email}`}
-                  className="flex items-center text-gray-700 hover:text-gray-900"
-                >
-                  <Mail className="h-5 w-5 text-gray-500 mr-2" />
-                  {property.agent.email}
+                <a href={`mailto:${propertyExtras.agent.email}`} className="flex items-center text-gray-800 hover:text-rose-600">
+                  <Mail className="h-5 w-5 mr-2" />
+                  {propertyExtras.agent.email}
                 </a>
               </div>
-              
+
               {showContactForm ? (
                 <form className="space-y-4">
                   <div>
@@ -393,11 +451,11 @@ const PropertyDetails = () => {
                       Message
                     </label>
                     <textarea
+                      className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-rose-500"
                       rows={4}
-                      className="w-full border border-gray-300 rounded-md py-2 px-3 focus:ring-rose-500 focus:border-rose-500"
-                      placeholder="I'm interested in this property..."
-                      defaultValue={`Hi ${property.agent.name}, I'm interested in the ${property.title} (ID: ${property.id}). Please contact me with more information.`}
-                    />
+                      placeholder="Your message"
+                      defaultValue={`Hi ${propertyExtras.agent.name}, I'm interested in the ${property.title} (ID: ${property.id}). Please contact me with more information.`}
+                    ></textarea>
                   </div>
                   <button
                     type="button"
@@ -407,12 +465,14 @@ const PropertyDetails = () => {
                   </button>
                 </form>
               ) : (
-                <button
-                  onClick={() => setShowContactForm(true)}
-                  className="w-full bg-rose-600 text-white py-2 rounded-md font-medium hover:bg-rose-700"
-                >
-                  Contact Agent
-                </button>
+                <div className="flex justify-center mt-4">
+                  <button 
+                    onClick={() => setShowContactForm(!showContactForm)}
+                    className="bg-rose-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-rose-700 transition-colors"
+                  >
+                    Contact {propertyExtras.agent.name}
+                  </button>
+                </div>
               )}
             </div>
             
@@ -425,7 +485,7 @@ const PropertyDetails = () => {
                 </div>
                 
                 <div className="space-y-3">
-                  {property.availability.availableDates.map((date, index) => (
+                  {propertyExtras.availability.availableDates.map((date, index) => (
                     <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div>
                         <div className="font-medium text-gray-900">{date.start} - {date.end}</div>
@@ -443,6 +503,13 @@ const PropertyDetails = () => {
                 </button>
               </div>
             )}
+            
+            {/* Property Reviews */}
+            <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+              {property && id && (
+                <PropertyReviews propertyId={id} />
+              )}
+            </div>
             
             {/* Similar Properties */}
             <div className="bg-white rounded-xl shadow-md p-6">

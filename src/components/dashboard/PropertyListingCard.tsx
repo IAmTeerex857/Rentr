@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Eye, Edit, Trash2, MoreVertical, DollarSign } from 'lucide-react';
 
 interface Property {
-  id: number;
+  id: string;
   title: string;
   location: string;
   price: number;
@@ -21,7 +21,7 @@ interface Property {
 
 interface PropertyListingCardProps {
   property: Property;
-  onDelete: (id: number) => void;
+  onDelete: (id: string) => void;
 }
 
 const PropertyListingCard = ({ property, onDelete }: PropertyListingCardProps) => {

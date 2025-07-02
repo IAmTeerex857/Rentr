@@ -15,13 +15,14 @@ import Layout from "./components/layout/Layout";
 import Home from "./pages/Home";
 import Onboarding from "./pages/Onboarding";
 import SearchResults from "./pages/SearchResults";
-import PropertyDetails from "./pages/PropertyDetails";
-import Search from "./pages/Search";
-import ProviderDashboard from "./pages/ProviderDashboard";
 import ListProperty from "./pages/ListProperty";
-import UserProfile from "./pages/UserProfile";
-import Register from "./pages/Register";
 import Login from "./pages/Login";
+import PropertyDetails from "./pages/PropertyDetails";
+import ProviderDashboard from "./pages/ProviderDashboard";
+import Register from "./pages/Register";
+import UserProfile from "./pages/UserProfile";
+import EditProperty from "./pages/EditProperty";
+import Search from "./pages/Search";
 
 function Guard({
 	fn,
@@ -88,6 +89,10 @@ function App() {
 								element={<ListProperty />}
 							/>
 							<Route path="/profile" element={<UserProfile />} />
+							<Route
+								path="/edit-property/:id"
+								element={<EditProperty />}
+							/>
 						</Route>
 
 						<Route path="*" element={<Navigate to="/" replace />} />
